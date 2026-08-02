@@ -1,0 +1,20 @@
+{
+  "extends": ["@commitlint/config-conventional"],
+  "rules": {
+    "scope-enum": [
+      2,
+      "always",
+      [
+        "api",
+        "model",
+        "sim",
+        "ui",
+        "docker",
+        "ci",
+        "docs",
+        "rules",
+        "preprocess"
+      ]
+    ]
+  }
+}

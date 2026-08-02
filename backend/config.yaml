@@ -1,0 +1,12 @@
+# ColdTrack AI backend configuration
+# Synchronous FastAPI service — no database, no background jobs.
+
+app:
+  name: coldtrack-ai-backend
+  host: 0.0.0.0
+  port: 8000
+
+model:
+  onnx_path: ml/reports/model.onnx
+  # sequence_length, feature order, thresholds, etc. to be defined
+  # together by the AI Model Engineer once the ONNX export is ready.
