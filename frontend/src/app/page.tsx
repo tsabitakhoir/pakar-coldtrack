@@ -2210,9 +2210,9 @@ export default function Home() {
 
                 </div>
 
-                <div className="flex min-h-0 flex-1 items-center gap-4">
+                <div className="flex min-h-0 flex-1 items-center gap-3 overflow-hidden">
 
-                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-3">
+                  <div className="flex min-w-0 flex-[0.85] flex-col justify-center gap-2">
 
                     <div>
 
@@ -2233,7 +2233,7 @@ export default function Home() {
                         {result.status}
                       </span>
 
-                      <p className="mt-2 truncate text-base font-bold capitalize leading-tight text-slate-700 2xl:text-lg">
+                      <p className="mt-1.5 text-sm font-bold capitalize leading-tight text-slate-700 2xl:text-lg">
                         {formatLabel(
                           result.failure_mode.label
                         )}
@@ -2243,7 +2243,7 @@ export default function Home() {
 
                     {/* Confidence is only meaningful next to the model's known
                         per-class reliability — see docs/model_card.md. */}
-                    <p className="text-sm font-medium leading-relaxed text-slate-600 2xl:text-base">
+                    <p className="text-xs font-medium leading-snug text-slate-600 2xl:text-base 2xl:leading-relaxed">
                       {result.failure_mode.confidence >= 0.8
                         ? "Keyakinan tinggi — diagnosis konsisten dengan pola fitur."
                         : result.failure_mode.confidence >= 0.5
@@ -2254,7 +2254,7 @@ export default function Home() {
                   </div>
 
                   <div
-                    className="relative flex aspect-square h-full max-h-[13rem] shrink-0 items-center justify-center rounded-full"
+                    className="relative flex aspect-square h-full max-h-[8.5rem] shrink-0 items-center justify-center rounded-full 2xl:max-h-[16rem]"
                     style={{
                       background: `conic-gradient(#0284c7 ${Math.min(
                         confidenceCount,
@@ -2265,11 +2265,11 @@ export default function Home() {
 
                     <div className="flex h-[76%] w-[76%] flex-col items-center justify-center rounded-full bg-white">
 
-                      <span className="text-3xl font-extrabold leading-none 2xl:text-5xl">
+                      <span className="text-2xl font-black leading-none tracking-tight text-slate-900 2xl:text-6xl">
                         {confidenceCount.toFixed(0)}%
                       </span>
 
-                      <span className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 2xl:text-xs">
+                      <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400 2xl:text-sm">
                         Keyakinan
                       </span>
 
