@@ -9,23 +9,31 @@ import {
 } from "react";
 import dynamic from "next/dynamic";
 import {
+  IcoActionList,
+  IcoAlert,
+  IcoAssessShield,
+  IcoReeferTruck,
+  IcoRiskDial,
+  IcoRoute,
+  IcoSafe,
+  IcoSnowflake,
+  IcoSparkle,
+  IcoStopwatch,
+  IcoThermoFrost,
+  IcoWhyBulb,
+} from "@/components/CartoonIcons";
+import {
   Activity,
   AlertTriangle,
   Apple,
   Beef,
-  CheckCircle2,
-  CloudCog,
   FileUp,
   Fish,
-  Gauge,
   Loader2,
-  MapPin,
   Milk,
-  Package,
   Play,
   Syringe,
   Thermometer,
-  Timer,
   Truck,
   Zap,
 } from "lucide-react";
@@ -357,10 +365,10 @@ function statusTextClass(status?: string) {
 
 function statusIcon(status?: string) {
   if (status === "AMAN") {
-    return <CheckCircle2 size={16} />;
+    return <IcoSafe className="h-4 w-4 shrink-0" />;
   }
 
-  return <AlertTriangle size={16} />;
+  return <IcoAlert className="h-4 w-4 shrink-0" />;
 }
 
 function cargoIcon(profile: string | undefined, size: number) {
@@ -381,7 +389,7 @@ function cargoIcon(profile: string | undefined, size: number) {
       return <Milk size={size} />;
 
     default:
-      return <Package size={size} />;
+      return <IcoSnowflake className="h-[18px] w-[18px]" />;
   }
 }
 
@@ -1576,7 +1584,7 @@ export default function Home() {
 
                 <div className="flex items-center gap-1.5">
 
-                  <CloudCog size={16} className="shrink-0 text-sky-200" />
+                  <IcoRoute className="h-[18px] w-[18px] shrink-0 text-sky-200" />
 
                   <h3 className="text-sm font-bold 2xl:text-base">
                     Data Perjalanan
@@ -1739,8 +1747,7 @@ export default function Home() {
             <div className="flex min-w-0 items-center gap-2.5 rounded-xl bg-white/10 p-2.5 ring-1 ring-white/15">
 
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 2xl:h-14 2xl:w-14">
-                <Gauge size={22} className="text-sky-100 2xl:hidden" />
-                <Gauge size={28} className="hidden text-sky-100 2xl:block" />
+                <IcoRiskDial className="h-6 w-6 text-sky-100 2xl:h-7 2xl:w-7" />
               </div>
 
               <div className="min-w-0 flex-1">
@@ -1785,8 +1792,7 @@ export default function Home() {
             <div className="flex min-w-0 items-center gap-2.5 rounded-xl bg-white/10 p-2.5 ring-1 ring-white/15">
 
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 2xl:h-14 2xl:w-14">
-                <Timer size={22} className="text-sky-100 2xl:hidden" />
-                <Timer size={28} className="hidden text-sky-100 2xl:block" />
+                <IcoStopwatch className="h-6 w-6 text-sky-100 2xl:h-7 2xl:w-7" />
               </div>
 
               <div className="min-w-0 flex-1">
@@ -1842,7 +1848,7 @@ export default function Home() {
               <div className="flex min-w-0 items-center gap-2.5">
 
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 2xl:h-11 2xl:w-11">
-                  <Truck size={18} className="text-sky-100" />
+                  <IcoReeferTruck className="h-5 w-5 text-sky-100" />
                 </div>
 
                 <div className="min-w-0">
@@ -1930,7 +1936,7 @@ export default function Home() {
                     <div className="flex items-center gap-2">
 
                       <IconBadge tone="cyan">
-                        <Thermometer size={16} />
+                        <IcoThermoFrost className="h-[18px] w-[18px]" />
                       </IconBadge>
 
                       <h3 className="text-base font-bold 2xl:text-lg">
@@ -1980,7 +1986,7 @@ export default function Home() {
                   <div className="flex min-w-0 items-center gap-2">
 
                     <IconBadge tone="teal">
-                      <MapPin size={16} />
+                      <IcoReeferTruck className="h-[18px] w-[18px]" />
                     </IconBadge>
 
                     <div className="min-w-0">
@@ -2081,7 +2087,7 @@ export default function Home() {
                   </div>
 
                   <IconBadge>
-                    <Activity size={16} />
+                    <IcoWhyBulb className="h-[18px] w-[18px]" />
                   </IconBadge>
 
                 </div>
@@ -2158,7 +2164,7 @@ export default function Home() {
                   </div>
 
                   <IconBadge tone="teal">
-                    <CheckCircle2 size={16} />
+                    <IcoActionList className="h-[18px] w-[18px]" />
                   </IconBadge>
 
                 </div>
@@ -2201,7 +2207,7 @@ export default function Home() {
                 <div className="mb-2 flex shrink-0 items-center gap-2">
 
                   <IconBadge>
-                    <Activity size={16} />
+                    <IcoAssessShield className="h-[18px] w-[18px]" />
                   </IconBadge>
 
                   <h3 className="text-base font-bold 2xl:text-lg">
@@ -2210,9 +2216,9 @@ export default function Home() {
 
                 </div>
 
-                <div className="flex min-h-0 flex-1 items-center gap-3 overflow-hidden">
+                <div className="flex min-h-0 flex-1 items-stretch gap-3 overflow-hidden">
 
-                  <div className="flex min-w-0 flex-[0.85] flex-col justify-center gap-2">
+                  <div className="flex min-w-0 flex-[0.85] flex-col justify-start gap-2">
 
                     <div>
 
@@ -2254,7 +2260,7 @@ export default function Home() {
                   </div>
 
                   <div
-                    className="relative flex aspect-square h-full max-h-[8.5rem] shrink-0 items-center justify-center rounded-full 2xl:max-h-[16rem]"
+                    className="relative flex aspect-square h-full max-h-[8.5rem] shrink-0 self-center items-center justify-center rounded-full 2xl:max-h-[16rem]"
                     style={{
                       background: `conic-gradient(#0284c7 ${Math.min(
                         confidenceCount,
@@ -2288,7 +2294,7 @@ export default function Home() {
                 <div className="mb-2 flex shrink-0 items-center gap-2">
 
                   <IconBadge tone="cyan">
-                    <Zap size={16} />
+                    <IcoSparkle className="h-[18px] w-[18px]" />
                   </IconBadge>
 
                   <h3 className="text-base font-bold 2xl:text-lg">
