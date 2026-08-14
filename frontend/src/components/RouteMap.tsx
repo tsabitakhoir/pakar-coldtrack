@@ -67,8 +67,8 @@ export default function RouteMap({
       key={`${start[0]},${start[1]}-${latlngs.length}`}
       center={current}
       zoom={9}
-      scrollWheelZoom={false}
-      zoomControl={false}
+      scrollWheelZoom={true}
+      zoomControl={true}
       attributionControl={false}
       className="h-full w-full rounded-xl"
       style={{ background: "#e0f2fe" }}

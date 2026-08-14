@@ -26,7 +26,6 @@ import {
   Syringe,
   Thermometer,
   Timer,
-  TrendingUp,
   Truck,
   Zap,
 } from "lucide-react";
@@ -179,7 +178,7 @@ function Snowfall() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+      className="pointer-events-none fixed inset-0 z-40 overflow-hidden"
     >
       {SNOWFLAKES.map((flake, index) => (
         <span
@@ -202,7 +201,7 @@ function Snowfall() {
 }
 
 // Animates a number from 0 to `value` once results land. Purely presentational.
-function useCountUp(value: number | null, duration = 900) {
+function useCountUp(value: number | null, duration = 1900) {
   const [display, setDisplay] = useState(0);
 
   useEffect(() => {
@@ -280,6 +279,30 @@ function nearestCity(lat: number, lon: number) {
 
   // ~0.5 degrees ≈ 55 km; beyond that don't claim a city name.
   return bestDist <= 0.25 ? best.name : null;
+}
+
+// Every card-header icon sits in the same cold-tinted chip, so the icons
+// read as a set instead of loose grey glyphs.
+function IconBadge({
+  children,
+  tone = "sky",
+}: {
+  children: React.ReactNode;
+  tone?: "sky" | "cyan" | "teal";
+}) {
+  const tones = {
+    sky: "bg-sky-100 text-sky-700 ring-sky-200/70",
+    cyan: "bg-cyan-100 text-cyan-700 ring-cyan-200/70",
+    teal: "bg-teal-100 text-teal-700 ring-teal-200/70",
+  };
+
+  return (
+    <span
+      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1 2xl:h-8 2xl:w-8 ${tones[tone]}`}
+    >
+      {children}
+    </span>
+  );
 }
 
 function statusClass(status?: string) {
@@ -452,6 +475,21 @@ function temperatureFromReading(
   }
 
   return null;
+}
+
+// Formats a reading's `ts` as HH:MM. Built manually (not toLocaleTimeString)
+// so the output can't shift with locale/timezone between renders.
+function formatClock(raw: string): string | null {
+  const d = new Date(raw);
+
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
+
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+
+  return `${hh}:${mm}`;
 }
 
 function timestampFromReading(
@@ -820,6 +858,45 @@ function TemperatureChart({
     }
   );
 
+  // Round-boundary time ticks: every 30 min for short trips, hourly for long.
+  const timeTicks: { x: number; label: string }[] = (() => {
+    if (points.length < 2) {
+      return [];
+    }
+
+    const t0 = new Date(points[0].timestamp).getTime();
+    const t1 = new Date(points[points.length - 1].timestamp).getTime();
+
+    if (Number.isNaN(t0) || Number.isNaN(t1) || t1 <= t0) {
+      return [];
+    }
+
+    const span = t1 - t0;
+    const stepMs = span > 3 * 3600_000 ? 3600_000 : 1800_000;
+
+    // first boundary at or after the start
+    const first = Math.ceil(t0 / stepMs) * stepMs;
+
+    const out: { x: number; label: string }[] = [];
+
+    for (let t = first; t <= t1; t += stepMs) {
+      const label = formatClock(new Date(t).toISOString());
+
+      if (!label) {
+        continue;
+      }
+
+      const frac = (t - t0) / span;
+
+      out.push({
+        x: left + frac * plotWidth * 0.82,
+        label,
+      });
+    }
+
+    return out;
+  })();
+
   const clampY = (value: number) =>
     Math.min(
       height - bottom,
@@ -1024,15 +1101,27 @@ function TemperatureChart({
           className="coldtrack-fade-in"
         />
 
-        <text
-          x={left}
-          y={height - 11}
-          fontSize="14"
-          fontWeight="600"
-          fill="#334155"
-        >
-          Start
-        </text>
+        {/* Clock ticks on round boundaries (:00 / :30) rather than raw
+            first/middle/last, so the axis reads like a real time axis. */}
+        {timeTicks.map((tick, index) => (
+          <text
+            key={`t-${tick.label}-${index}`}
+            x={tick.x}
+            y={height - 11}
+            textAnchor={
+              index === 0
+                ? "start"
+                : index === timeTicks.length - 1
+                ? "end"
+                : "middle"
+            }
+            fontSize="14"
+            fontWeight="600"
+            fill="#334155"
+          >
+            {tick.label}
+          </text>
+        ))}
 
         <text
           x={forecastX1}
@@ -1066,165 +1155,6 @@ function TemperatureChart({
         >
           +60m
         </text>
-      </svg>
-    </div>
-  );
-}
-
-/* =========================================================
-   FORECAST CHART (t15 / t30 / t60 mini trend)
-========================================================= */
-
-function ForecastChart({
-  currentTemp,
-  forecast,
-}: {
-  currentTemp: number;
-  forecast: AnalyzeResponse["forecast"];
-}) {
-  const { ref, size } = useElementSize<HTMLDivElement>();
-
-  const points = [
-    { label: "Sekarang", value: currentTemp },
-    { label: "+15m", value: forecast.t15 },
-    { label: "+30m", value: forecast.t30 },
-    { label: "+60m", value: forecast.t60 },
-  ];
-
-  const values = points.map((point) => point.value);
-
-  let minTemp = Math.min(...values);
-  let maxTemp = Math.max(...values);
-
-  if (minTemp === maxTemp) {
-    minTemp -= 1;
-    maxTemp += 1;
-  }
-
-  const margin = Math.max((maxTemp - minTemp) * 0.25, 0.5);
-
-  minTemp -= margin;
-  maxTemp += margin;
-
-  const width = size.width || 400;
-  const height = size.height || 220;
-
-  const left = 34;
-  const right = 26;
-  const top = 26;
-  const bottom = 24;
-
-  const plotWidth = width - left - right;
-  const plotHeight = height - top - bottom;
-
-  const x = (index: number) =>
-    left + (index / (points.length - 1)) * plotWidth;
-
-  const y = (value: number) =>
-    top + ((maxTemp - value) / (maxTemp - minTemp)) * plotHeight;
-
-  const linePath = points
-    .map(
-      (point, index) =>
-        `${index === 0 ? "M" : "L"} ${x(index)} ${y(point.value)}`
-    )
-    .join(" ");
-
-  const areaPath = `${linePath} L ${x(points.length - 1)} ${
-    height - bottom
-  } L ${x(0)} ${height - bottom} Z`;
-
-  return (
-    <div ref={ref} className="h-full w-full">
-      <svg
-        width={width}
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
-        className="block"
-      >
-        <defs>
-          <linearGradient
-            id="forecastFill"
-            x1="0"
-            y1="0"
-            x2="0"
-            y2="1"
-          >
-            <stop
-              offset="0%"
-              stopColor="#3b82f6"
-              stopOpacity="0.22"
-            />
-            <stop
-              offset="100%"
-              stopColor="#3b82f6"
-              stopOpacity="0"
-            />
-          </linearGradient>
-        </defs>
-
-        <path d={areaPath} fill="url(#forecastFill)" />
-
-        <path
-          d={linePath}
-          fill="none"
-          stroke="#3b82f6"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="coldtrack-draw"
-          style={{
-            strokeDasharray: 2000,
-            strokeDashoffset: 2000,
-          }}
-        />
-
-        {points.map((point, index) => (
-          <g key={point.label} className="coldtrack-fade-in">
-            <circle
-              cx={x(index)}
-              cy={y(point.value)}
-              r="4"
-              fill="#fff"
-              stroke="#3b82f6"
-              strokeWidth="2"
-            />
-
-            <text
-              x={x(index)}
-              y={y(point.value) - 10}
-              textAnchor={
-                index === 0
-                  ? "start"
-                  : index === points.length - 1
-                  ? "end"
-                  : "middle"
-              }
-              fontSize="14"
-              fontWeight="700"
-              fill="#0c4a6e"
-            >
-              {point.value.toFixed(1)}°
-            </text>
-
-            <text
-              x={x(index)}
-              y={height - 8}
-              textAnchor={
-                index === 0
-                  ? "start"
-                  : index === points.length - 1
-                  ? "end"
-                  : "middle"
-              }
-              fontSize="13"
-              fontWeight="600"
-              fill="#334155"
-            >
-              {point.label}
-            </text>
-          </g>
-        ))}
       </svg>
     </div>
   );
@@ -1518,6 +1448,25 @@ export default function Home() {
     )}, ${b.lon.toFixed(2)}`;
   }, [tripRoute]);
 
+  const tripWindow = useMemo(() => {
+    if (!selectedReadings.length) {
+      return null;
+    }
+
+    const first = formatClock(
+      timestampFromReading(selectedReadings[0], 0)
+    );
+
+    const last = formatClock(
+      timestampFromReading(
+        selectedReadings[selectedReadings.length - 1],
+        selectedReadings.length - 1
+      )
+    );
+
+    return first && last ? `${first}\u2013${last}` : null;
+  }, [selectedReadings]);
+
   const riskCount = useCountUp(
     result ? result.risk_index * 100 : null
   );
@@ -1575,7 +1524,7 @@ export default function Home() {
                       ColdTrack AI
                     </h1>
 
-                    <span className="rounded-full border border-amber-300/50 bg-amber-400/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-100 2xl:px-2 2xl:text-xs">
+                    <span className="rounded-full border border-cyan-300/50 bg-cyan-400/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-cyan-100 2xl:px-2 2xl:text-xs">
                       Mode Demo — parameter statis
                     </span>
                   </div>
@@ -1761,7 +1710,7 @@ export default function Home() {
                     ? !csvReadings
                     : loadingScenarios || !selectedScenario)
                 }
-                className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-cyan-400 text-xs font-bold text-sky-950 shadow-sm transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40 2xl:h-10 2xl:text-sm"
+                className="flex h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-sky-500 to-cyan-500 text-xs font-bold text-white shadow-sm ring-1 ring-sky-300/40 transition hover:from-sky-400 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-40 2xl:h-10 2xl:text-sm"
               >
 
                 {analyzing ? (
@@ -1980,7 +1929,9 @@ export default function Home() {
 
                     <div className="flex items-center gap-2">
 
-                      <Thermometer size={18} />
+                      <IconBadge tone="cyan">
+                        <Thermometer size={16} />
+                      </IconBadge>
 
                       <h3 className="text-base font-bold 2xl:text-lg">
                         Temperature Monitoring
@@ -1989,7 +1940,9 @@ export default function Home() {
                     </div>
 
                     <p className="mt-0.5 text-xs text-slate-500 2xl:text-sm">
-                      Actual telemetry dan forecast temperatur
+                      {tripWindow
+                        ? `Telemetri ${tripWindow} \u00b7 forecast +60 menit`
+                        : "Actual telemetry dan forecast temperatur"}
                     </p>
 
                   </div>
@@ -2018,19 +1971,17 @@ export default function Home() {
 
               </div>
 
-              {/* RIGHT COLUMN — map 30% + forecast 30% */}
+              {/* VEHICLE TRACKING — fills the right column */}
 
-              <div className="flex min-h-0 min-w-0 flex-col gap-2">
-
-              {/* VEHICLE TRACKING */}
-
-              <div className="flex min-h-0 min-w-0 flex-[1.35] flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
 
                   <div className="flex min-w-0 items-center gap-2">
 
-                    <MapPin size={17} className="shrink-0" />
+                    <IconBadge tone="teal">
+                      <MapPin size={16} />
+                    </IconBadge>
 
                     <div className="min-w-0">
 
@@ -2103,54 +2054,17 @@ export default function Home() {
 
               </div>
 
-              {/* TEMPERATURE FORECAST */}
-
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
-
-                <div className="mb-1 flex shrink-0 items-center gap-2">
-
-                  <TrendingUp size={17} className="shrink-0 text-blue-500" />
-
-                  <div className="min-w-0">
-                    <h3 className="truncate text-base font-bold 2xl:text-lg">
-                      Temperature Forecast
-                    </h3>
-
-                    <p className="truncate text-xs text-slate-500 2xl:text-sm">
-                      Proyeksi t+15/30/60 menit.
-                    </p>
-                  </div>
-
-                </div>
-
-                <div className="min-h-0 flex-1">
-                  <ForecastChart
-                    currentTemp={
-                      temperatureFromReading(
-                        selectedReadings[
-                          selectedReadings.length - 1
-                        ] || {}
-                      ) ?? result.forecast.t15
-                    }
-                    forecast={result.forecast}
-                  />
-                </div>
-
-              </div>
-
-              </div>
-
             </section>
 
             {/* =============================================
                 LOWER ANALYSIS — 40% zone
             ============================================== */}
 
-            <section className="grid min-h-0 flex-[4] gap-2 xl:grid-cols-[0.82fr_1.4fr_0.83fr_1.15fr]">
+            <section className="grid min-h-0 flex-[4] gap-2 xl:grid-cols-[1.1fr_1.25fr_1.15fr_0.8fr]">
 
               {/* DRIVERS */}
 
-              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="order-4 flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-3 flex shrink-0 items-center justify-between">
 
@@ -2166,10 +2080,9 @@ export default function Home() {
 
                   </div>
 
-                  <Activity
-                    size={17}
-                    className="text-slate-300"
-                  />
+                  <IconBadge>
+                    <Activity size={16} />
+                  </IconBadge>
 
                 </div>
 
@@ -2228,7 +2141,7 @@ export default function Home() {
 
               {/* ACTIONS */}
 
-              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="order-2 flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-3 flex shrink-0 items-center justify-between">
 
@@ -2244,10 +2157,9 @@ export default function Home() {
 
                   </div>
 
-                  <CheckCircle2
-                    size={17}
-                    className="text-slate-300"
-                  />
+                  <IconBadge tone="teal">
+                    <CheckCircle2 size={16} />
+                  </IconBadge>
 
                 </div>
 
@@ -2284,29 +2196,44 @@ export default function Home() {
 
               {/* AI ASSESSMENT */}
 
-              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="order-3 flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
-                <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                <div className="mb-2 flex shrink-0 items-center gap-2">
 
-                  <div className="flex items-center gap-2">
+                  <IconBadge>
+                    <Activity size={16} />
+                  </IconBadge>
 
-                    <Activity size={18} className="text-sky-600" />
+                  <h3 className="text-base font-bold 2xl:text-lg">
+                    AI Assessment
+                  </h3>
 
-                    <h3 className="text-base font-bold 2xl:text-lg">
-                      AI Assessment
-                    </h3>
+                </div>
 
-                  </div>
+                <div className="flex min-h-0 flex-1 items-center gap-4">
 
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-3">
 
-                    <div className="min-w-0 text-right">
+                    <div>
 
                       <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 2xl:text-xs">
-                        Failure Mode
+                        Kondisi
                       </p>
 
-                      <p className="truncate text-sm font-bold capitalize leading-tight 2xl:text-base">
+                      <span
+                        className={`mt-1 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm font-extrabold 2xl:text-base ${statusClass(
+                          result.status
+                        )} ${
+                          result.status === "KRITIS"
+                            ? "coldtrack-pulse"
+                            : ""
+                        }`}
+                      >
+                        {statusIcon(result.status)}
+                        {result.status}
+                      </span>
+
+                      <p className="mt-2 truncate text-base font-bold capitalize leading-tight text-slate-700 2xl:text-lg">
                         {formatLabel(
                           result.failure_mode.label
                         )}
@@ -2314,27 +2241,20 @@ export default function Home() {
 
                     </div>
 
-                    <span
-                      className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold 2xl:px-2.5 2xl:py-1 2xl:text-sm ${statusClass(
-                        result.status
-                      )} ${
-                        result.status === "KRITIS"
-                          ? "coldtrack-pulse"
-                          : ""
-                      }`}
-                    >
-                      {statusIcon(result.status)}
-                      {result.status}
-                    </span>
+                    {/* Confidence is only meaningful next to the model's known
+                        per-class reliability — see docs/model_card.md. */}
+                    <p className="text-sm font-medium leading-relaxed text-slate-600 2xl:text-base">
+                      {result.failure_mode.confidence >= 0.8
+                        ? "Keyakinan tinggi — diagnosis konsisten dengan pola fitur."
+                        : result.failure_mode.confidence >= 0.5
+                        ? "Keyakinan sedang — verifikasi dengan kondisi lapangan."
+                        : "Keyakinan rendah — perlakukan sebagai indikasi awal, bukan kesimpulan."}
+                    </p>
 
                   </div>
 
-                </div>
-
-                <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5">
-
                   <div
-                    className="relative flex aspect-square w-full max-w-[6.5rem] items-center justify-center rounded-full 2xl:max-w-[9rem]"
+                    className="relative flex aspect-square h-full max-h-[13rem] shrink-0 items-center justify-center rounded-full"
                     style={{
                       background: `conic-gradient(#0284c7 ${Math.min(
                         confidenceCount,
@@ -2345,14 +2265,11 @@ export default function Home() {
 
                     <div className="flex h-[76%] w-[76%] flex-col items-center justify-center rounded-full bg-white">
 
-                      <span className="text-2xl font-extrabold leading-none 2xl:text-4xl">
-                        {(
-                          result.failure_mode.confidence * 100
-                        ).toFixed(0)}
-                        %
+                      <span className="text-3xl font-extrabold leading-none 2xl:text-5xl">
+                        {confidenceCount.toFixed(0)}%
                       </span>
 
-                      <span className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400 2xl:text-[11px]">
+                      <span className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 2xl:text-xs">
                         Keyakinan
                       </span>
 
@@ -2360,27 +2277,19 @@ export default function Home() {
 
                   </div>
 
-                  {/* Confidence is only meaningful next to the model's known
-                      per-class reliability — see docs/model_card.md. */}
-                  <p className="px-1 text-center text-xs font-medium leading-snug text-slate-600 2xl:text-sm">
-                    {result.failure_mode.confidence >= 0.8
-                      ? "Keyakinan tinggi — diagnosis konsisten dengan pola fitur."
-                      : result.failure_mode.confidence >= 0.5
-                      ? "Keyakinan sedang — verifikasi dengan kondisi lapangan."
-                      : "Keyakinan rendah — perlakukan sebagai indikasi awal, bukan kesimpulan."}
-                  </p>
-
                 </div>
 
               </div>
 
               {/* AI SUMMARY */}
 
-              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="order-1 flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-2 flex shrink-0 items-center gap-2">
 
-                  <Zap size={17} />
+                  <IconBadge tone="cyan">
+                    <Zap size={16} />
+                  </IconBadge>
 
                   <h3 className="text-base font-bold 2xl:text-lg">
                     AI Summary
