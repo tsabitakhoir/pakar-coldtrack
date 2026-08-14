@@ -57,3 +57,36 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* =========================================================
+   COLD CHAIN DECOR — falling snow
+   Purely decorative: the overlay is pointer-events-none and
+   sits above the page background but never blocks interaction.
+========================================================= */
+
+@keyframes coldtrack-snowfall {
+  0% {
+    transform: translate3d(0, -8vh, 0) rotate(0deg);
+  }
+
+  100% {
+    transform: translate3d(var(--snow-drift, 0px), 108vh, 0)
+      rotate(var(--snow-spin, 180deg));
+  }
+}
+
+.coldtrack-snowflake {
+  position: absolute;
+  top: 0;
+  will-change: transform;
+  animation-name: coldtrack-snowfall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* Respect users who prefer no motion — hide the snow entirely. */
+@media (prefers-reduced-motion: reduce) {
+  .coldtrack-snowflake {
+    display: none;
+  }
+}
