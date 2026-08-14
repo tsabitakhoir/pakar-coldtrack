@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import dynamic from "next/dynamic";
 import {
   Activity,
   AlertTriangle,
@@ -29,6 +30,16 @@ import {
   Truck,
   Zap,
 } from "lucide-react";
+
+// Leaflet touches `window` on import, so it can only load in the browser.
+const RouteMap = dynamic(() => import("@/components/RouteMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center rounded-xl bg-sky-50 text-sm font-medium text-slate-400">
+      Memuat peta...
+    </div>
+  ),
+});
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -168,7 +179,7 @@ function Snowfall() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-30 overflow-hidden"
+      className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
     >
       {SNOWFLAKES.map((flake, index) => (
         <span
@@ -190,6 +201,87 @@ function Snowfall() {
   );
 }
 
+// Animates a number from 0 to `value` once results land. Purely presentational.
+function useCountUp(value: number | null, duration = 900) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    if (value === null) {
+      setDisplay(0);
+      return;
+    }
+
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setDisplay(value);
+      return;
+    }
+
+    let frame = 0;
+    const start = performance.now();
+
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      // ease-out so it decelerates into the final number
+      setDisplay(value * (1 - Math.pow(1 - t, 3)));
+
+      if (t < 1) {
+        frame = requestAnimationFrame(tick);
+      }
+    };
+
+    frame = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(frame);
+  }, [value, duration]);
+
+  return display;
+}
+
+function routePoints(readings: Reading[]) {
+  return readings
+    .map((r) => ({
+      lat: numberFromValue(r.lat),
+      lon: numberFromValue(r.lon),
+    }))
+    .filter(
+      (p): p is { lat: number; lon: number } =>
+        p.lat !== null && p.lon !== null
+    );
+}
+
+// Label the route from the telemetry itself rather than hardcoding city names.
+const CITIES: { name: string; lat: number; lon: number }[] = [
+  { name: "Jakarta", lat: -6.2088, lon: 106.8456 },
+  { name: "Bandung", lat: -6.9175, lon: 107.6191 },
+  { name: "Semarang", lat: -6.9667, lon: 110.4167 },
+  { name: "Yogyakarta", lat: -7.7956, lon: 110.3695 },
+  { name: "Surabaya", lat: -7.2575, lon: 112.7521 },
+  { name: "Malang", lat: -7.9666, lon: 112.6326 },
+  { name: "Medan", lat: 3.5952, lon: 98.6722 },
+  { name: "Makassar", lat: -5.1477, lon: 119.4327 },
+];
+
+function nearestCity(lat: number, lon: number) {
+  let best = CITIES[0];
+  let bestDist = Infinity;
+
+  for (const city of CITIES) {
+    const d =
+      Math.pow(city.lat - lat, 2) + Math.pow(city.lon - lon, 2);
+
+    if (d < bestDist) {
+      bestDist = d;
+      best = city;
+    }
+  }
+
+  // ~0.5 degrees ≈ 55 km; beyond that don't claim a city name.
+  return bestDist <= 0.25 ? best.name : null;
+}
+
 function statusClass(status?: string) {
   switch (status) {
     case "AMAN":
@@ -203,6 +295,24 @@ function statusClass(status?: string) {
 
     default:
       return "border-slate-200 bg-slate-50 text-slate-700";
+  }
+}
+
+// Glow applied to the whole header bar so the dashboard visibly "reacts"
+// when a risky scenario is analysed.
+function statusGlowClass(status?: string) {
+  switch (status) {
+    case "WASPADA":
+      return "ring-amber-300/60 shadow-[0_0_38px_-6px_rgba(245,158,11,0.55)]";
+
+    case "KRITIS":
+      return "ring-red-400/70 shadow-[0_0_44px_-4px_rgba(239,68,68,0.65)]";
+
+    case "AMAN":
+      return "ring-emerald-300/50 shadow-[0_0_32px_-8px_rgba(16,185,129,0.45)]";
+
+    default:
+      return "ring-sky-950/40 shadow-lg";
   }
 }
 
@@ -856,6 +966,11 @@ function TemperatureChart({
           strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
+          className="coldtrack-draw"
+          style={{
+            strokeDasharray: 6000,
+            strokeDashoffset: 6000,
+          }}
         />
 
         <path
@@ -863,9 +978,13 @@ function TemperatureChart({
           fill="none"
           stroke="#38bdf8"
           strokeWidth="3"
-          strokeDasharray="8 6"
           strokeLinecap="round"
           strokeLinejoin="round"
+          className="coldtrack-draw-delayed"
+          style={{
+            strokeDasharray: 2000,
+            strokeDashoffset: 2000,
+          }}
         />
 
         <circle
@@ -882,6 +1001,7 @@ function TemperatureChart({
           fill="white"
           stroke="#38bdf8"
           strokeWidth="2"
+          className="coldtrack-fade-in"
         />
 
         <circle
@@ -891,6 +1011,7 @@ function TemperatureChart({
           fill="white"
           stroke="#38bdf8"
           strokeWidth="2"
+          className="coldtrack-fade-in"
         />
 
         <circle
@@ -900,6 +1021,7 @@ function TemperatureChart({
           fill="white"
           stroke="#38bdf8"
           strokeWidth="2"
+          className="coldtrack-fade-in"
         />
 
         <text
@@ -1050,10 +1172,15 @@ function ForecastChart({
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
+          className="coldtrack-draw"
+          style={{
+            strokeDasharray: 2000,
+            strokeDashoffset: 2000,
+          }}
         />
 
         {points.map((point, index) => (
-          <g key={point.label}>
+          <g key={point.label} className="coldtrack-fade-in">
             <circle
               cx={x(index)}
               cy={y(point.value)}
@@ -1366,6 +1493,43 @@ export default function Home() {
   // beyond the display cap (backend/app/inference.py `is_healthy` + `cap`
   // check) — that null is the authoritative "don't show a number" signal.
   // `status` is a separate rule-engine verdict and must not gate this.
+  const tripRoute = useMemo(
+    () => routePoints(selectedReadings),
+    [selectedReadings]
+  );
+
+  const routeLabel = useMemo(() => {
+    if (tripRoute.length < 2) {
+      return "—";
+    }
+
+    const a = tripRoute[0];
+    const b = tripRoute[tripRoute.length - 1];
+
+    const from = nearestCity(a.lat, a.lon);
+    const to = nearestCity(b.lat, b.lon);
+
+    if (from && to) {
+      return `${from} → ${to}`;
+    }
+
+    return `${a.lat.toFixed(2)}, ${a.lon.toFixed(2)} → ${b.lat.toFixed(
+      2
+    )}, ${b.lon.toFixed(2)}`;
+  }, [tripRoute]);
+
+  const riskCount = useCountUp(
+    result ? result.risk_index * 100 : null
+  );
+
+  const ttbCount = useCountUp(
+    result?.time_to_breach_min ?? null
+  );
+
+  const confidenceCount = useCountUp(
+    result ? result.failure_mode.confidence * 100 : null
+  );
+
   const showTTBNumber =
     result !== null &&
     result.time_to_breach_min !== null &&
@@ -1379,13 +1543,17 @@ export default function Home() {
 
       <Snowfall />
 
-      <div className="flex w-full flex-1 flex-col gap-2 overflow-hidden px-6 py-2 lg:px-8">
+      <div className="relative z-10 flex w-full flex-1 flex-col gap-2 overflow-hidden px-6 py-2 lg:px-8">
 
         {/* =================================================
             BRAND + DATA PERJALANAN + KPI
         ================================================== */}
 
-        <section className="relative z-10 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-r from-sky-950 via-sky-900 to-cyan-900 p-2.5 shadow-lg ring-1 ring-sky-950/40 2xl:p-3">
+        <section
+          className={`relative z-10 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-r from-sky-950 via-sky-900 to-cyan-900 p-2.5 ring-1 transition-shadow duration-700 2xl:p-3 ${statusGlowClass(
+            result?.status
+          )}`}
+        >
 
           <div className="grid gap-[1.375rem] text-white xl:grid-cols-[1.28fr_1fr_0.92fr_0.86fr_0.92fr_0.84fr] 2xl:grid-cols-[1.7fr_0.95fr_0.9fr_0.85fr_0.9fr_0.86fr]">
 
@@ -1635,10 +1803,7 @@ export default function Home() {
                 {result ? (
                   <>
                     <p className="mt-0.5 text-3xl font-extrabold leading-none text-white 2xl:text-4xl">
-                      {(
-                        result.risk_index *
-                        100
-                      ).toFixed(1)}
+                      {riskCount.toFixed(1)}
 
                       <span className="text-lg font-bold text-sky-200 2xl:text-xl">
                         %
@@ -1648,13 +1813,9 @@ export default function Home() {
                     <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/25">
 
                       <div
-                        className="h-full rounded-full bg-sky-300"
+                        className="h-full rounded-full bg-sky-300 transition-[width] duration-700 ease-out"
                         style={{
-                          width: `${Math.min(
-                            result.risk_index *
-                              100,
-                            100
-                          )}%`,
+                          width: `${Math.min(riskCount, 100)}%`,
                         }}
                       />
 
@@ -1689,7 +1850,7 @@ export default function Home() {
                   showTTBNumber ? (
                     <>
                       <p className="mt-0.5 text-3xl font-extrabold leading-none text-white 2xl:text-4xl">
-                        {result.time_to_breach_min}
+                        {ttbCount.toFixed(1)}
 
                         <span className="ml-1 text-base font-bold text-sky-200 2xl:text-lg">
                           min
@@ -1811,7 +1972,7 @@ export default function Home() {
 
               {/* TEMPERATURE — main chart (60% zone, left) */}
 
-              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-sky-100 bg-white p-3 shadow-sm ring-1 ring-sky-50">
+              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-2 flex shrink-0 items-center justify-between">
 
@@ -1863,7 +2024,7 @@ export default function Home() {
 
               {/* VEHICLE TRACKING */}
 
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-sky-100 bg-white p-3 shadow-sm ring-1 ring-sky-50">
+              <div className="flex min-h-0 min-w-0 flex-[1.35] flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
 
@@ -1891,89 +2052,12 @@ export default function Home() {
 
                 </div>
 
-                <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl bg-sky-50">
+                <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl">
 
-                  {/* MAP BACKGROUND */}
-
-                  <div className="absolute inset-0">
-
-                    <div className="absolute left-[15%] top-0 h-full w-px bg-sky-200/70" />
-
-                    <div className="absolute left-[35%] top-0 h-full w-px bg-sky-200/70" />
-
-                    <div className="absolute left-[55%] top-0 h-full w-px bg-sky-200/70" />
-
-                    <div className="absolute left-[75%] top-0 h-full w-px bg-sky-200/70" />
-
-                    <div className="absolute left-0 top-[25%] h-px w-full bg-sky-200/70" />
-
-                    <div className="absolute left-0 top-[50%] h-px w-full bg-sky-200/70" />
-
-                    <div className="absolute left-0 top-[75%] h-px w-full bg-sky-200/70" />
-
-                  </div>
-
-                  <svg
-                    viewBox="0 0 600 300"
-                    className="absolute inset-0 h-full w-full"
-                    preserveAspectRatio="none"
-                  >
-
-                    <path
-                      d="M45 250 C120 220, 150 100, 245 140 S400 220, 550 50"
-                      fill="none"
-                      stroke="#bae6fd"
-                      strokeWidth="22"
-                    />
-
-                    <path
-                      d="M45 250 C120 220, 150 100, 245 140 S400 220, 550 50"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="10"
-                    />
-
-                  </svg>
-
-                  {/* ORIGIN */}
-
-                  <div className="absolute bottom-7 left-5">
-
-                    <div className="h-3 w-3 rounded-full bg-sky-900 ring-4 ring-white" />
-
-                    <p className="mt-1 text-xs font-bold text-slate-700">
-                      Bandung
-                    </p>
-
-                  </div>
-
-                  {/* VEHICLE */}
-
-                  <div className="absolute left-[56%] top-[47%]">
-
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-900 text-white shadow-lg ring-4 ring-white">
-
-                      <Truck size={16} />
-
-                    </div>
-
-                    <div className="mt-1 rounded-md bg-white px-2 py-1 text-[10px] font-bold shadow-sm">
-                      {vehicleId}
-                    </div>
-
-                  </div>
-
-                  {/* DESTINATION */}
-
-                  <div className="absolute right-5 top-6">
-
-                    <div className="h-3 w-3 rounded-full bg-sky-900 ring-4 ring-white" />
-
-                    <p className="mt-1 text-xs font-bold text-slate-700">
-                      Malang
-                    </p>
-
-                  </div>
+                  <RouteMap
+                    points={tripRoute}
+                    status={result.status}
+                  />
 
                 </div>
 
@@ -1998,7 +2082,7 @@ export default function Home() {
                     </p>
 
                     <p className="truncate text-sm font-bold 2xl:text-base">
-                      Bandung → Malang
+                      {routeLabel}
                     </p>
 
                   </div>
@@ -2006,11 +2090,11 @@ export default function Home() {
                   <div>
 
                     <p className="text-[10px] text-slate-400 2xl:text-xs">
-                      Status
+                      Titik GPS
                     </p>
 
                     <p className="text-sm font-bold text-emerald-600 2xl:text-base">
-                      Active
+                      {tripRoute.length}
                     </p>
 
                   </div>
@@ -2021,7 +2105,7 @@ export default function Home() {
 
               {/* TEMPERATURE FORECAST */}
 
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-sky-100 bg-white p-3 shadow-sm ring-1 ring-sky-50">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-1 flex shrink-0 items-center gap-2">
 
@@ -2066,7 +2150,7 @@ export default function Home() {
 
               {/* DRIVERS */}
 
-              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-sky-100 bg-white p-3 shadow-sm ring-1 ring-sky-50">
+              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-3 flex shrink-0 items-center justify-between">
 
@@ -2119,7 +2203,7 @@ export default function Home() {
                         <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-sky-100">
 
                           <div
-                            className="h-full rounded-full bg-sky-600"
+                            className="h-full rounded-full bg-sky-600 transition-[width] duration-700 ease-out"
                             style={{
                               width: `${
                                 driver.contribution *
@@ -2144,7 +2228,7 @@ export default function Home() {
 
               {/* ACTIONS */}
 
-              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-sky-100 bg-white p-3 shadow-sm ring-1 ring-sky-50">
+              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-3 flex shrink-0 items-center justify-between">
 
@@ -2200,7 +2284,7 @@ export default function Home() {
 
               {/* AI ASSESSMENT */}
 
-              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-sky-100 bg-white p-3 shadow-sm ring-1 ring-sky-50">
+              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
 
@@ -2233,7 +2317,11 @@ export default function Home() {
                     <span
                       className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold 2xl:px-2.5 2xl:py-1 2xl:text-sm ${statusClass(
                         result.status
-                      )}`}
+                      )} ${
+                        result.status === "KRITIS"
+                          ? "coldtrack-pulse"
+                          : ""
+                      }`}
                     >
                       {statusIcon(result.status)}
                       {result.status}
@@ -2249,7 +2337,7 @@ export default function Home() {
                     className="relative flex aspect-square w-full max-w-[6.5rem] items-center justify-center rounded-full 2xl:max-w-[9rem]"
                     style={{
                       background: `conic-gradient(#0284c7 ${Math.min(
-                        result.failure_mode.confidence * 100,
+                        confidenceCount,
                         100
                       )}%, #e2e8f0 0)`,
                     }}
@@ -2288,7 +2376,7 @@ export default function Home() {
 
               {/* AI SUMMARY */}
 
-              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-sky-100 bg-white p-3 shadow-sm ring-1 ring-sky-50">
+              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-2 flex shrink-0 items-center gap-2">
 
