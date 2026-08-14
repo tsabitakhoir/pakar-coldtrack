@@ -24,6 +24,7 @@ def compute_risk_index(
     forecast: dict[str, float],
     cargo_profile: str,
     df_features: pd.DataFrame,
+    time_to_breach_min: float | None = None,
 ) -> tuple[float, str]:
     """Compute Cargo Risk Index (0.0 to 1.0) and status classification."""
     limits = evaluate_cargo_limits(cargo_profile)
@@ -83,6 +84,19 @@ def compute_risk_index(
         risk_index = max(risk_index, 0.45)
     else:
         status = "AMAN"
+
+    # The t15/t30/t60 forecast checked above only samples three discrete
+    # points, so a breach the dedicated TTB model sees (trained on the full
+    # trend, not three snapshots) can slip through as "AMAN". A short TTB is
+    # a stronger, more direct signal of imminent breach than those samples,
+    # so it must be able to override an under-called status.
+    if time_to_breach_min is not None:
+        if time_to_breach_min <= 15 and status != "KRITIS":
+            status = "KRITIS"
+            risk_index = max(risk_index, 0.85)
+        elif time_to_breach_min <= 30 and status == "AMAN":
+            status = "WASPADA"
+            risk_index = max(risk_index, 0.45)
 
     return risk_index, status
 

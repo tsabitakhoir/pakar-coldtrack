@@ -149,6 +149,7 @@ def analyze_telemetry(payload: AnalyzeRequest) -> AnalyzeResponse:
         forecast=forecast.model_dump(),
         cargo_profile=payload.cargo_profile,
         df_features=df_features,
+        time_to_breach_min=time_to_breach,
     )
 
     # Heuristic TTB fallback if ONNX returned None during warning or critical status
