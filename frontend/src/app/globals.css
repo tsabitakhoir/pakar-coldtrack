@@ -176,3 +176,32 @@
 .leaflet-control-zoom a:hover {
   background: #e0f2fe !important;
 }
+
+/* =========================================================
+   PAGE ATMOSPHERE
+   Two soft cold glows plus a very faint snowflake weave, so the
+   background reads as frosted air instead of flat pale blue.
+========================================================= */
+
+.coldtrack-page {
+  background-color: #dbeafe;
+  background-image:
+    radial-gradient(
+      42rem 26rem at 8% -6%,
+      rgba(103, 232, 249, 0.55),
+      transparent 70%
+    ),
+    radial-gradient(
+      38rem 24rem at 102% 8%,
+      rgba(147, 197, 253, 0.5),
+      transparent 70%
+    ),
+    radial-gradient(
+      46rem 30rem at 50% 118%,
+      rgba(186, 230, 253, 0.6),
+      transparent 72%
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128' viewBox='0 0 128 128'%3E%3Cg fill='none' stroke='%230284c7' stroke-opacity='0.07' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M32 12v24M20 24h24M23 15l18 18M41 15L23 33'/%3E%3Cpath d='M96 76v20M87 86h18M89.5 79.5l13 13M102.5 79.5l-13 13'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(135deg, #e0f2fe 0%, #ecfeff 45%, #f0f9ff 100%);
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
+}

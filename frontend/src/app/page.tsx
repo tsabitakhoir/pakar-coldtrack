@@ -11,16 +11,15 @@ import dynamic from "next/dynamic";
 import {
   IcoActionList,
   IcoAlert,
-  IcoAssessShield,
-  IcoReeferTruck,
+  IcoBrain,
+  IcoMagnify,
   IcoRiskDial,
-  IcoRoute,
   IcoSafe,
   IcoSnowflake,
-  IcoSparkle,
   IcoStopwatch,
+  IcoSummaryDoc,
   IcoThermoFrost,
-  IcoWhyBulb,
+  IcoTripFlag,
 } from "@/components/CartoonIcons";
 import {
   Activity,
@@ -34,7 +33,6 @@ import {
   Play,
   Syringe,
   Thermometer,
-  Truck,
   Zap,
 } from "lucide-react";
 
@@ -291,6 +289,20 @@ function nearestCity(lat: number, lon: number) {
 
 // Every card-header icon sits in the same cold-tinted chip, so the icons
 // read as a set instead of loose grey glyphs.
+// The reefer artwork is a dark-navy PNG, so it needs a light chip behind it
+// to stay legible on the dark header bar.
+function TruckMark({ className = "" }: { className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/truck.png"
+      alt=""
+      aria-hidden="true"
+      className={`object-contain ${className}`}
+    />
+  );
+}
+
 function IconBadge({
   children,
   tone = "sky",
@@ -948,6 +960,14 @@ function TemperatureChart({
         viewBox={`0 0 ${width} ${height}`}
         className="block"
       >
+        <defs>
+          <linearGradient id="coldtrackArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.34" />
+            <stop offset="55%" stopColor="#38bdf8" stopOpacity="0.14" />
+            <stop offset="100%" stopColor="#e0f2fe" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
         <rect
           x={left}
           y={bandTopY}
@@ -1045,6 +1065,16 @@ function TemperatureChart({
         />
 
         <path
+          d={`${actualPath} L ${actualEndX} ${height - bottom} L ${left} ${
+            height - bottom
+          } Z`}
+          fill="url(#coldtrackArea)"
+          stroke="none"
+          className="coldtrack-fade-in"
+        />
+
+        <path
+          id="coldtrack-actual-path"
           d={actualPath}
           fill="none"
           stroke="#0c4a6e"
@@ -1109,8 +1139,22 @@ function TemperatureChart({
           className="coldtrack-fade-in"
         />
 
-        {/* Clock ticks on round boundaries (:00 / :30) rather than raw
-            first/middle/last, so the axis reads like a real time axis. */}
+        {/* Vertical guide at every 30-minute boundary, so a reading can be
+            traced back to a time without counting pixels. */}
+        {timeTicks.map((tick, index) => (
+          <line
+            key={`grid-${index}`}
+            x1={tick.x}
+            y1={top}
+            x2={tick.x}
+            y2={height - bottom}
+            stroke="#94a3b8"
+            strokeWidth="1"
+            strokeDasharray="3 5"
+            opacity="0.5"
+          />
+        ))}
+
         {timeTicks.map((tick, index) => (
           <text
             key={`t-${tick.label}-${index}`}
@@ -1496,7 +1540,7 @@ export default function Home() {
     result?.failure_mode.label === "normal_sehat";
 
   return (
-    <main className="flex min-h-screen flex-col bg-gradient-to-br from-sky-200 via-cyan-100 to-sky-100 text-slate-900 lg:h-screen lg:overflow-hidden">
+    <main className="coldtrack-page flex min-h-screen flex-col text-slate-900 lg:h-screen lg:overflow-hidden">
 
       <Snowfall />
 
@@ -1520,9 +1564,8 @@ export default function Home() {
 
               <div className="flex items-center gap-3">
 
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 2xl:h-14 2xl:w-14">
-                  <Truck size={22} className="2xl:hidden" />
-                  <Truck size={28} className="hidden 2xl:block" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm 2xl:h-14 2xl:w-14 2xl:p-2">
+                  <TruckMark className="h-full w-full" />
                 </div>
 
                 <div className="min-w-0">
@@ -1584,7 +1627,7 @@ export default function Home() {
 
                 <div className="flex items-center gap-1.5">
 
-                  <IcoRoute className="h-[18px] w-[18px] shrink-0 text-sky-200" />
+                  <IcoTripFlag className="h-[18px] w-[18px] shrink-0 text-sky-200" />
 
                   <h3 className="text-sm font-bold 2xl:text-base">
                     Data Perjalanan
@@ -1847,8 +1890,8 @@ export default function Home() {
 
               <div className="flex min-w-0 items-center gap-2.5">
 
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 2xl:h-11 2xl:w-11">
-                  <IcoReeferTruck className="h-5 w-5 text-sky-100" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm 2xl:h-11 2xl:w-11 2xl:p-1.5">
+                  <TruckMark className="h-full w-full" />
                 </div>
 
                 <div className="min-w-0">
@@ -1986,7 +2029,7 @@ export default function Home() {
                   <div className="flex min-w-0 items-center gap-2">
 
                     <IconBadge tone="teal">
-                      <IcoReeferTruck className="h-[18px] w-[18px]" />
+                      <TruckMark className="h-[18px] w-[18px]" />
                     </IconBadge>
 
                     <div className="min-w-0">
@@ -2087,7 +2130,7 @@ export default function Home() {
                   </div>
 
                   <IconBadge>
-                    <IcoWhyBulb className="h-[18px] w-[18px]" />
+                    <IcoMagnify className="h-[18px] w-[18px]" />
                   </IconBadge>
 
                 </div>
@@ -2207,7 +2250,7 @@ export default function Home() {
                 <div className="mb-2 flex shrink-0 items-center gap-2">
 
                   <IconBadge>
-                    <IcoAssessShield className="h-[18px] w-[18px]" />
+                    <IcoBrain className="h-[18px] w-[18px]" />
                   </IconBadge>
 
                   <h3 className="text-base font-bold 2xl:text-lg">
@@ -2294,7 +2337,7 @@ export default function Home() {
                 <div className="mb-2 flex shrink-0 items-center gap-2">
 
                   <IconBadge tone="cyan">
-                    <IcoSparkle className="h-[18px] w-[18px]" />
+                    <IcoSummaryDoc className="h-[18px] w-[18px]" />
                   </IconBadge>
 
                   <h3 className="text-base font-bold 2xl:text-lg">
