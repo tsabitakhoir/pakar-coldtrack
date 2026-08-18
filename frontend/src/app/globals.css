@@ -209,10 +209,6 @@
 /* =========================================================
    CARD DECOR
    ::before = frost glow in two corners (shared by every card)
-   ::after  = a coloured rail down the left edge, one hue per card, so the
-              four analysis cards are distinguishable at a glance.
-   One pseudo-element each — they cannot be shared, which is why the rail
-   lives on ::after rather than a second ::before.
 ========================================================= */
 
 .coldtrack-card {
@@ -238,32 +234,4 @@
     );
   background-position: top right, bottom left;
   background-repeat: no-repeat, no-repeat;
-}
-
-.coldtrack-rail::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.85rem;
-  bottom: 0.85rem;
-  width: 4px;
-  border-radius: 999px;
-  pointer-events: none;
-  background: linear-gradient(180deg, #0ea5e9, #22d3ee);
-}
-
-.coldtrack-rail-sky::after {
-  background: linear-gradient(180deg, #0ea5e9, #22d3ee);
-}
-
-.coldtrack-rail-teal::after {
-  background: linear-gradient(180deg, #14b8a6, #34d399);
-}
-
-.coldtrack-rail-indigo::after {
-  background: linear-gradient(180deg, #2563eb, #38bdf8);
-}
-
-.coldtrack-rail-cyan::after {
-  background: linear-gradient(180deg, #0891b2, #22d3ee);
 }

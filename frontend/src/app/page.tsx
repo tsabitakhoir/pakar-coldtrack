@@ -314,12 +314,14 @@ function IconBadge({
   tone = "sky",
 }: {
   children: React.ReactNode;
-  tone?: "sky" | "cyan" | "teal";
+  tone?: "sky" | "cyan" | "teal" | "indigo" | "navy";
 }) {
   const tones = {
     sky: "bg-sky-100 text-sky-700 ring-sky-200/70",
     cyan: "bg-cyan-100 text-cyan-700 ring-cyan-200/70",
     teal: "bg-teal-100 text-teal-700 ring-teal-200/70",
+    indigo: "bg-indigo-100 text-indigo-700 ring-indigo-200/70",
+    navy: "bg-blue-900 text-white ring-blue-800/60",
   };
 
   return (
@@ -1026,23 +1028,6 @@ function TemperatureChart({
       ref={ref}
       className="relative h-full w-full overflow-hidden rounded-xl bg-white"
     >
-      <div className="absolute right-3 top-2 z-10 flex items-center gap-3 rounded-lg border border-slate-200 bg-white/95 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur">
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-sky-900" />
-          Actual
-        </span>
-
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
-          Forecast
-        </span>
-
-        <span className="flex items-center gap-1.5 text-emerald-700">
-          <span className="h-2.5 w-2.5 rounded-sm border border-emerald-500 bg-emerald-100" />
-          Ambang aman
-        </span>
-      </div>
-
       <svg
         width={width}
         height={height}
@@ -2118,9 +2103,22 @@ export default function Home() {
 
                   </div>
 
-                  <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700 2xl:px-3 2xl:py-1 2xl:text-sm">
-                    {selectedReadings.length} points
-                  </span>
+                  <div className="flex shrink-0 items-center gap-3 rounded-lg border border-slate-200 bg-white/95 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-full bg-sky-900" />
+                      Actual
+                    </span>
+
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
+                      Forecast
+                    </span>
+
+                    <span className="flex items-center gap-1.5 text-emerald-700">
+                      <span className="h-2.5 w-2.5 rounded-sm border border-emerald-500 bg-emerald-100" />
+                      Ambang aman
+                    </span>
+                  </div>
 
                 </div>
 
@@ -2151,8 +2149,8 @@ export default function Home() {
 
                   <div className="flex min-w-0 items-center gap-2">
 
-                    <IconBadge tone="teal">
-                      <TruckMark className="h-full w-full" />
+                    <IconBadge tone="navy">
+                      <TruckMark light className="h-full w-full" />
                     </IconBadge>
 
                     <div className="min-w-0">
@@ -2232,7 +2230,7 @@ export default function Home() {
 
               {/* DRIVERS */}
 
-              <div className="order-4 coldtrack-rail coldtrack-rail-cyan flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-cyan-500/70 bg-white/75 p-3 pl-4 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="order-4 flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-cyan-500/70 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-3 flex shrink-0 items-center gap-2.5">
 
@@ -2347,7 +2345,7 @@ export default function Home() {
 
               {/* ACTIONS */}
 
-              <div className="order-2 coldtrack-rail coldtrack-rail-teal flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-teal-400/70 bg-white/75 p-3 pl-4 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="order-2 flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-teal-400/70 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-3 flex shrink-0 items-center gap-2.5">
 
@@ -2424,11 +2422,11 @@ export default function Home() {
 
               {/* AI ASSESSMENT */}
 
-              <div className="order-3 coldtrack-rail coldtrack-rail-indigo flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-blue-400/70 bg-white/75 p-3 pl-4 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="order-3 flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-blue-400/70 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-2 flex shrink-0 items-center gap-2">
 
-                  <IconBadge>
+                  <IconBadge tone="indigo">
                     <IcoBrain className="h-full w-full" />
                   </IconBadge>
 
@@ -2511,7 +2509,7 @@ export default function Home() {
 
               {/* AI SUMMARY */}
 
-              <div className="order-1 coldtrack-rail coldtrack-rail-sky flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-sky-400/70 bg-white/75 p-3 pl-4 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="order-1 flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-sky-400/70 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-2 flex shrink-0 items-center gap-2">
 

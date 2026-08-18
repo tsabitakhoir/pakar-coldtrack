@@ -1,0 +1,91 @@
+diff --git a/frontend/src/app/page.tsx b/frontend/src/app/page.tsx
+index 25d2bcd..8ced328 100644
+--- a/frontend/src/app/page.tsx
++++ b/frontend/src/app/page.tsx
+@@ -314,13 +314,14 @@ function IconBadge({
+   tone = "sky",
+ }: {
+   children: React.ReactNode;
+-  tone?: "sky" | "cyan" | "teal" | "white";
++  tone?: "sky" | "cyan" | "teal" | "indigo" | "navy";
+ }) {
+   const tones = {
+     sky: "bg-sky-100 text-sky-700 ring-sky-200/70",
+     cyan: "bg-cyan-100 text-cyan-700 ring-cyan-200/70",
+     teal: "bg-teal-100 text-teal-700 ring-teal-200/70",
+-    white: "bg-white text-slate-700 ring-slate-200/70",
++    indigo: "bg-indigo-100 text-indigo-700 ring-indigo-200/70",
++    navy: "bg-blue-900 text-white ring-blue-800/60",
+   };
+ 
+   return (
+@@ -1027,23 +1028,6 @@ function TemperatureChart({
+       ref={ref}
+       className="relative h-full w-full overflow-hidden rounded-xl bg-white"
+     >
+-      <div className="absolute right-3 top-0.5 z-10 flex items-center gap-3 rounded-lg border border-slate-200 bg-white/95 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur">
+-        <span className="flex items-center gap-1.5">
+-          <span className="h-2.5 w-2.5 rounded-full bg-sky-900" />
+-          Actual
+-        </span>
+-
+-        <span className="flex items-center gap-1.5">
+-          <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
+-          Forecast
+-        </span>
+-
+-        <span className="flex items-center gap-1.5 text-emerald-700">
+-          <span className="h-2.5 w-2.5 rounded-sm border border-emerald-500 bg-emerald-100" />
+-          Ambang aman
+-        </span>
+-      </div>
+-
+       <svg
+         width={width}
+         height={height}
+@@ -2119,9 +2103,22 @@ export default function Home() {
+ 
+                   </div>
+ 
+-                  <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700 2xl:px-3 2xl:py-1 2xl:text-sm">
+-                    {selectedReadings.length} points
+-                  </span>
++                  <div className="flex shrink-0 items-center gap-3 rounded-lg border border-slate-200 bg-white/95 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
++                    <span className="flex items-center gap-1.5">
++                      <span className="h-2.5 w-2.5 rounded-full bg-sky-900" />
++                      Actual
++                    </span>
++
++                    <span className="flex items-center gap-1.5">
++                      <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
++                      Forecast
++                    </span>
++
++                    <span className="flex items-center gap-1.5 text-emerald-700">
++                      <span className="h-2.5 w-2.5 rounded-sm border border-emerald-500 bg-emerald-100" />
++                      Ambang aman
++                    </span>
++                  </div>
+ 
+                 </div>
+ 
+@@ -2152,8 +2149,8 @@ export default function Home() {
+ 
+                   <div className="flex min-w-0 items-center gap-2">
+ 
+-                    <IconBadge tone="teal">
+-                      <TruckMark className="h-full w-full" />
++                    <IconBadge tone="navy">
++                      <TruckMark light className="h-full w-full" />
+                     </IconBadge>
+ 
+                     <div className="min-w-0">
+@@ -2429,7 +2426,7 @@ export default function Home() {
+ 
+                 <div className="mb-2 flex shrink-0 items-center gap-2">
+ 
+-                  <IconBadge tone="white">
++                  <IconBadge tone="indigo">
+                     <IcoBrain className="h-full w-full" />
+                   </IconBadge>
+ 
