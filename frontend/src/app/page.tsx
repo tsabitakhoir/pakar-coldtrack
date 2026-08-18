@@ -49,7 +49,7 @@ const RouteMap = dynamic(() => import("@/components/RouteMap"), {
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
-// Mirrors backend/config.yaml `cargo_profiles` — kept static per the MVP's
+// Mirrors backend/config.yaml `cargo_profiles` - kept static per the MVP's
 // "parameter statis saat demo" constraint, no endpoint exposes this yet.
 const CARGO_LIMITS: Record<
   string,
@@ -82,7 +82,7 @@ const CARGO_PROFILE_LABELS: Record<string, string> = {
 
 const MIN_ANALYZE_READINGS = 60;
 
-// Mirrors backend/config.yaml `model.ttb_display_cap_min` — model_card.md
+// Mirrors backend/config.yaml `model.ttb_display_cap_min` - model_card.md
 // section "Limitations #1": MAE balloons past this horizon, so an exact
 // countdown beyond it would overstate precision the model doesn't have.
 const TTB_DISPLAY_CAP_MIN = 30;
@@ -140,7 +140,7 @@ type AnalyzeResponse = {
    files to license or ship, and it stays crisp at any size.
 ========================================================= */
 
-// Fixed (not random) so server and client render identically — Math.random()
+// Fixed (not random) so server and client render identically - Math.random()
 // here would cause a hydration mismatch.
 const SNOWFLAKES = [
   { left: "2%", size: 30, dur: 17, delay: 0, drift: 44, opacity: 0.5 },
@@ -291,11 +291,17 @@ function nearestCity(lat: number, lon: number) {
 // read as a set instead of loose grey glyphs.
 // The reefer artwork is a dark-navy PNG, so it needs a light chip behind it
 // to stay legible on the dark header bar.
-function TruckMark({ className = "" }: { className?: string }) {
+function TruckMark({
+  className = "",
+  light = false,
+}: {
+  className?: string;
+  light?: boolean;
+}) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/truck.png"
+      src={light ? "/truck-light.png" : "/truck.png"}
       alt=""
       aria-hidden="true"
       className={`object-contain ${className}`}
@@ -318,7 +324,7 @@ function IconBadge({
 
   return (
     <span
-      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1 2xl:h-8 2xl:w-8 ${tones[tone]}`}
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl p-1.5 ring-1 2xl:h-11 2xl:w-11 2xl:p-2 ${tones[tone]}`}
     >
       {children}
     </span>
@@ -343,19 +349,19 @@ function statusClass(status?: string) {
 
 // Glow applied to the whole header bar so the dashboard visibly "reacts"
 // when a risky scenario is analysed.
-function statusGlowClass(status?: string) {
+function statusStripClass(status?: string) {
   switch (status) {
     case "WASPADA":
-      return "ring-amber-300/60 shadow-[0_0_38px_-6px_rgba(245,158,11,0.55)]";
+      return "bg-gradient-to-r from-amber-400/0 via-amber-300 to-amber-400/0";
 
     case "KRITIS":
-      return "ring-red-400/70 shadow-[0_0_44px_-4px_rgba(239,68,68,0.65)]";
+      return "bg-gradient-to-r from-red-500/0 via-red-400 to-red-500/0";
 
     case "AMAN":
-      return "ring-emerald-300/50 shadow-[0_0_32px_-8px_rgba(16,185,129,0.45)]";
+      return "bg-gradient-to-r from-emerald-400/0 via-emerald-300 to-emerald-400/0";
 
     default:
-      return "ring-sky-950/40 shadow-lg";
+      return "bg-gradient-to-r from-sky-500/0 via-sky-400/60 to-sky-500/0";
   }
 }
 
@@ -405,6 +411,22 @@ function cargoIcon(profile: string | undefined, size: number) {
   }
 }
 
+// What each driver actually measures, so the number under the bar reads as
+// information rather than a bare figure.
+const DRIVER_MEANING: Record<string, string> = {
+  laju_kenaikan_suhu: "Kecepatan suhu kargo naik tiap menit",
+  delta_suhu_ambien: "Selisih suhu kargo terhadap udara luar",
+  durasi_reefer_aktif: "Lama unit pendingin menyala di jendela ini",
+  suhu_maksimum: "Suhu tertinggi pada jendela pengamatan",
+  variasi_suhu: "Seberapa berfluktuasi suhu kargo",
+  durasi_pintu_terbuka: "Total lama pintu kargo terbuka",
+  kelembaban: "Kelembapan relatif di dalam kargo",
+};
+
+function driverMeaning(feature: string) {
+  return DRIVER_MEANING[feature] ?? "Kontribusi fitur terhadap diagnosis";
+}
+
 function formatLabel(label: string) {
   return label.replaceAll("_", " ");
 }
@@ -439,7 +461,7 @@ function buildAiSummary(
     result.time_to_breach_min !== null &&
     result.time_to_breach_min <= TTB_DISPLAY_CAP_MIN
   ) {
-    outlook = `Jika tren saat ini berlanjut, suhu diperkirakan melewati ambang batas dalam ±${result.time_to_breach_min} menit — segera jalankan langkah prioritas pertama di panel tindakan.`;
+    outlook = `Jika tren saat ini berlanjut, suhu diperkirakan melewati ambang batas dalam ±${result.time_to_breach_min} menit - segera jalankan langkah prioritas pertama di panel tindakan.`;
   } else {
     outlook =
       "Proyeksi jangka panjang belum presisi di luar horizon 30 menit (keterbatasan model); pantau tren suhu secara berkala dan waspadai perubahan mendadak.";
@@ -713,10 +735,12 @@ function TemperatureChart({
   readings,
   forecast,
   limits,
+  timeToBreachMin,
 }: {
   readings: Reading[];
   forecast: AnalyzeResponse["forecast"];
   limits: { min_temp_c: number; max_temp_c: number; critical_temp_c: number };
+  timeToBreachMin?: number | null;
 }) {
   const { ref, size } = useElementSize<HTMLDivElement>();
 
@@ -932,6 +956,71 @@ function TemperatureChart({
 
   const criticalY = clampY(limits.critical_temp_c);
 
+  // Interpolate where the forecast first crosses the ceiling, so the chart
+  // shows *when* the breach lands instead of only that risk is high.
+  const breach = (() => {
+    const lastTemp = points[points.length - 1].temperature;
+
+    const legs: { from: number; to: number; t0: number; t1: number }[] = [
+      { from: lastTemp, to: forecast.t15, t0: 0, t1: 15 },
+      { from: forecast.t15, to: forecast.t30, t0: 15, t1: 30 },
+      { from: forecast.t30, to: forecast.t60, t0: 30, t1: 60 },
+    ];
+
+    const xs = [actualEndX, forecastX1, forecastX2, forecastX3];
+
+    for (let i = 0; i < legs.length; i++) {
+      const { from, to, t0, t1 } = legs[i];
+
+      if (Math.max(from, to) < limits.max_temp_c) {
+        continue;
+      }
+
+      if (from >= limits.max_temp_c) {
+        return { x: xs[i], minutes: t0, fromTtb: false };
+      }
+
+      const ratio = (limits.max_temp_c - from) / (to - from);
+
+      if (ratio >= 0 && ratio <= 1) {
+        return {
+          x: xs[i] + (xs[i + 1] - xs[i]) * ratio,
+          minutes: Math.round(t0 + (t1 - t0) * ratio),
+          fromTtb: false,
+        };
+      }
+    }
+
+    // The forecast head (GRU) and the TTB head (XGBoost) are separate models
+    // and can disagree: on the demo scenarios the forecast stays inside the
+    // band while TTB still reports a breach. Fall back to plotting the TTB
+    // value so the chart corroborates the headline number instead of
+    // silently contradicting it.
+    if (
+      timeToBreachMin !== null &&
+      timeToBreachMin !== undefined &&
+      timeToBreachMin <= 60
+    ) {
+      const xs = [actualEndX, forecastX1, forecastX2, forecastX3];
+      const stops = [0, 15, 30, 60];
+
+      for (let i = 0; i < stops.length - 1; i++) {
+        if (timeToBreachMin <= stops[i + 1]) {
+          const ratio =
+            (timeToBreachMin - stops[i]) / (stops[i + 1] - stops[i]);
+
+          return {
+            x: xs[i] + (xs[i + 1] - xs[i]) * ratio,
+            minutes: Math.round(timeToBreachMin),
+            fromTtb: true,
+          };
+        }
+      }
+    }
+
+    return null;
+  })();
+
   return (
     <div
       ref={ref}
@@ -968,6 +1057,27 @@ function TemperatureChart({
           </linearGradient>
         </defs>
 
+        {/* above the ceiling = breach zone */}
+        <rect
+          x={left}
+          y={top}
+          width={width - left - right}
+          height={Math.max(bandTopY - top, 0)}
+          fill="#ef4444"
+          fillOpacity="0.09"
+        />
+
+        {/* below the floor = too cold (also a spoilage risk) */}
+        <rect
+          x={left}
+          y={bandBottomY}
+          width={width - left - right}
+          height={Math.max(height - bottom - bandBottomY, 0)}
+          fill="#6366f1"
+          fillOpacity="0.09"
+        />
+
+        {/* inside the cargo window = safe */}
         <rect
           x={left}
           y={bandTopY}
@@ -977,7 +1087,7 @@ function TemperatureChart({
           fillOpacity="0.13"
         />
 
-        {/* Explicit band edges — the fill alone is too faint to read as a
+        {/* Explicit band edges - the fill alone is too faint to read as a
             threshold, especially when it spans most of the plot. */}
         {[
           { y: bandTopY, value: limits.max_temp_c },
@@ -1160,13 +1270,7 @@ function TemperatureChart({
             key={`t-${tick.label}-${index}`}
             x={tick.x}
             y={height - 11}
-            textAnchor={
-              index === 0
-                ? "start"
-                : index === timeTicks.length - 1
-                ? "end"
-                : "middle"
-            }
+            textAnchor="middle"
             fontSize="14"
             fontWeight="600"
             fill="#334155"
@@ -1473,7 +1577,7 @@ export default function Home() {
 
   // Backend already nulls time_to_breach_min for the healthy class (A0) and
   // beyond the display cap (backend/app/inference.py `is_healthy` + `cap`
-  // check) — that null is the authoritative "don't show a number" signal.
+  // check) - that null is the authoritative "don't show a number" signal.
   // `status` is a separate rule-engine verdict and must not gate this.
   const tripRoute = useMemo(
     () => routePoints(selectedReadings),
@@ -1482,7 +1586,7 @@ export default function Home() {
 
   const routeLabel = useMemo(() => {
     if (tripRoute.length < 2) {
-      return "—";
+      return "-";
     }
 
     const a = tripRoute[0];
@@ -1551,12 +1655,30 @@ export default function Home() {
         ================================================== */}
 
         <section
-          className={`relative z-10 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-r from-sky-950 via-sky-900 to-cyan-900 p-2.5 ring-1 transition-shadow duration-700 2xl:p-3 ${statusGlowClass(
-            result?.status
-          )}`}
+          className="relative z-10 shrink-0 overflow-hidden rounded-2xl bg-[#0b2740] p-2.5 shadow-xl ring-1 ring-sky-950/50 2xl:p-3"
         >
+          {/* one light source instead of a wide gradient - a gradient stretched
+              across ~1900px always reads washed out */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-[38rem] rounded-full bg-cyan-400/20 blur-3xl"
+          />
 
-          <div className="grid gap-[1.375rem] text-white xl:grid-cols-[1.28fr_1fr_0.92fr_0.86fr_0.92fr_0.84fr] 2xl:grid-cols-[1.7fr_0.95fr_0.9fr_0.85fr_0.9fr_0.86fr]">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-24 -top-28 h-64 w-[26rem] rounded-full bg-sky-500/15 blur-3xl"
+          />
+
+          {/* status reads as a strip on the top edge */}
+          <div
+            aria-hidden="true"
+            className={`pointer-events-none absolute inset-x-6 top-0 h-[3px] rounded-full transition-colors duration-700 ${statusStripClass(
+              result?.status
+            )}`}
+          />
+
+
+          <div className="relative grid gap-[1.375rem] text-white xl:grid-cols-[1.28fr_1fr_0.92fr_0.86fr_0.92fr_0.84fr] 2xl:grid-cols-[1.7fr_0.95fr_0.9fr_0.85fr_0.9fr_0.86fr]">
 
             {/* BRAND + CONTROLS */}
 
@@ -1564,8 +1686,8 @@ export default function Home() {
 
               <div className="flex items-center gap-3">
 
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm 2xl:h-14 2xl:w-14 2xl:p-2">
-                  <TruckMark className="h-full w-full" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 p-1.5 ring-1 ring-white/20 2xl:h-14 2xl:w-14 2xl:p-2">
+                  <TruckMark light className="h-full w-full" />
                 </div>
 
                 <div className="min-w-0">
@@ -1576,7 +1698,7 @@ export default function Home() {
                     </h1>
 
                     <span className="rounded-full border border-cyan-300/50 bg-cyan-400/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-cyan-100 2xl:px-2 2xl:text-xs">
-                      Mode Demo — parameter statis
+                      Mode Demo - parameter statis
                     </span>
                   </div>
 
@@ -1822,7 +1944,7 @@ export default function Home() {
                   </>
                 ) : (
                   <p className="mt-1 text-xl font-bold text-sky-200">
-                    —
+                    -
                   </p>
                 )}
 
@@ -1869,14 +1991,14 @@ export default function Home() {
 
                       <p className="mt-1 text-[11px] font-semibold leading-snug text-sky-100 2xl:text-sm">
                         {isHealthyDiagnosis
-                          ? "TTB disembunyikan — kondisi sehat"
+                          ? "TTB disembunyikan - kondisi sehat"
                           : "Risiko jangka panjang, angka belum presisi"}
                       </p>
                     </>
                   )
                 ) : (
                   <p className="mt-1 text-xl font-bold text-sky-200">
-                    —
+                    -
                   </p>
                 )}
 
@@ -1884,14 +2006,14 @@ export default function Home() {
 
             </div>
 
-            {/* SHIPMENT — vehicle + cargo */}
+            {/* SHIPMENT - vehicle + cargo */}
 
             <div className="flex min-w-0 flex-col justify-center gap-2 rounded-xl bg-white/10 p-2.5 ring-1 ring-white/15">
 
               <div className="flex min-w-0 items-center gap-2.5">
 
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-sm 2xl:h-11 2xl:w-11 2xl:p-1.5">
-                  <TruckMark className="h-full w-full" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 p-1 2xl:h-11 2xl:w-11 2xl:p-1.5">
+                  <TruckMark light className="h-full w-full" />
                 </div>
 
                 <div className="min-w-0">
@@ -1923,7 +2045,7 @@ export default function Home() {
                   <p className="truncate text-sm font-extrabold leading-tight text-white 2xl:text-base">
                     {usingCsv
                       ? csvCargoProfile
-                      : selected?.cargo_profile || "—"}
+                      : selected?.cargo_profile || "-"}
                   </p>
                 </div>
 
@@ -1966,11 +2088,11 @@ export default function Home() {
                 CHART + MAP
             ============================================== */}
 
-            <section className="grid min-h-0 flex-[6] gap-2 xl:grid-cols-[1.6fr_1fr]">
+            <section className="grid min-h-0 flex-[5.2] gap-2 xl:grid-cols-[1.6fr_1fr]">
 
-              {/* TEMPERATURE — main chart (60% zone, left) */}
+              {/* TEMPERATURE - main chart (60% zone, left) */}
 
-              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-sky-300/70 bg-white/75 p-3 pl-4 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-2 flex shrink-0 items-center justify-between">
 
@@ -1979,16 +2101,16 @@ export default function Home() {
                     <div className="flex items-center gap-2">
 
                       <IconBadge tone="cyan">
-                        <IcoThermoFrost className="h-[18px] w-[18px]" />
+                        <IcoThermoFrost className="h-full w-full" />
                       </IconBadge>
 
-                      <h3 className="text-base font-bold 2xl:text-lg">
+                      <h3 className="text-lg font-extrabold tracking-tight 2xl:text-xl">
                         Temperature Monitoring
                       </h3>
 
                     </div>
 
-                    <p className="mt-0.5 text-xs text-slate-500 2xl:text-sm">
+                    <p className="mt-0.5 text-sm font-semibold text-slate-600 2xl:text-base">
                       {tripWindow
                         ? `Telemetri ${tripWindow} \u00b7 forecast +60 menit`
                         : "Actual telemetry dan forecast temperatur"}
@@ -2014,41 +2136,38 @@ export default function Home() {
                           : selected?.cargo_profile ?? ""
                       ] || DEFAULT_CARGO_LIMITS
                     }
+                    timeToBreachMin={result.time_to_breach_min}
                   />
 
                 </div>
 
               </div>
 
-              {/* VEHICLE TRACKING — fills the right column */}
+              {/* VEHICLE TRACKING - fills the right column */}
 
-              <div className="flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-sky-300/70 bg-white/75 p-3 pl-4 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
 
                   <div className="flex min-w-0 items-center gap-2">
 
                     <IconBadge tone="teal">
-                      <TruckMark className="h-[18px] w-[18px]" />
+                      <TruckMark className="h-full w-full" />
                     </IconBadge>
 
                     <div className="min-w-0">
 
-                      <h3 className="truncate text-base font-bold 2xl:text-lg">
+                      <h3 className="truncate text-lg font-extrabold tracking-tight 2xl:text-xl">
                         Vehicle Tracking
                       </h3>
 
-                      <p className="truncate text-xs text-slate-500 2xl:text-sm">
+                      <p className="truncate text-sm font-semibold text-slate-600 2xl:text-base">
                         Monitoring posisi kendaraan
                       </p>
 
                     </div>
 
                   </div>
-
-                  <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 2xl:px-3 2xl:py-1 2xl:text-sm">
-                    ● In Transit
-                  </span>
 
                 </div>
 
@@ -2106,82 +2225,120 @@ export default function Home() {
             </section>
 
             {/* =============================================
-                LOWER ANALYSIS — 40% zone
+                LOWER ANALYSIS - 40% zone
             ============================================== */}
 
-            <section className="grid min-h-0 flex-[4] gap-2 xl:grid-cols-[1.1fr_1.25fr_1.15fr_0.8fr]">
+            <section className="grid min-h-0 flex-[4.8] gap-2 xl:grid-cols-[1fr_1.15fr_1fr_1.15fr]">
 
               {/* DRIVERS */}
 
-              <div className="order-4 flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="order-4 coldtrack-rail coldtrack-rail-cyan flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-cyan-500/70 bg-white/75 p-3 pl-4 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
-                <div className="mb-3 flex shrink-0 items-center justify-between">
+                <div className="mb-3 flex shrink-0 items-center gap-2.5">
 
-                  <div>
+                  <IconBadge>
+                    <IcoMagnify className="h-full w-full" />
+                  </IconBadge>
 
-                    <h3 className="text-base font-bold 2xl:text-lg">
+                  <div className="min-w-0">
+
+                    <h3 className="text-lg font-extrabold tracking-tight 2xl:text-xl">
                       Mengapa AI Berpikir Begini
                     </h3>
 
-                    <p className="mt-0.5 text-xs text-slate-500 2xl:text-sm">
+                    <p className="mt-0.5 truncate text-sm font-semibold text-slate-600 2xl:text-base">
                       3 faktor pendorong teratas hasil analisis.
                     </p>
 
                   </div>
 
-                  <IconBadge>
-                    <IcoMagnify className="h-[18px] w-[18px]" />
-                  </IconBadge>
-
                 </div>
 
-                <div className="flex min-h-0 flex-1 flex-col justify-between gap-2 overflow-y-auto">
+                <div className="flex min-h-0 flex-1 flex-col justify-between gap-2.5 overflow-y-auto">
 
                   {result.drivers.slice(0, 3).map(
-                    (driver, index) => (
-                      <div
-                        key={`${driver.feature}-${index}`}
-                        className="flex flex-col justify-center rounded-lg bg-sky-50/70 px-3 py-2"
-                      >
+                    (driver, index) => {
+                      // Rank 1 contributes most to the diagnosis, so it is the
+                      // hottest: red -> orange -> green as influence drops.
+                      const scale = [
+                        {
+                          bar: "bg-gradient-to-r from-red-500 to-rose-400",
+                          chip: "bg-red-500",
+                          tag: "Paling berpengaruh",
+                          tagClass: "bg-red-50 text-red-700 ring-red-200",
+                        },
+                        {
+                          bar: "bg-gradient-to-r from-amber-500 to-orange-400",
+                          chip: "bg-amber-500",
+                          tag: "Berpengaruh sedang",
+                          tagClass: "bg-amber-50 text-amber-700 ring-amber-200",
+                        },
+                        {
+                          bar: "bg-gradient-to-r from-emerald-500 to-green-400",
+                          chip: "bg-emerald-500",
+                          tag: "Pengaruh kecil",
+                          tagClass:
+                            "bg-emerald-50 text-emerald-700 ring-emerald-200",
+                        },
+                      ][index] ?? {
+                        bar: "bg-slate-400",
+                        chip: "bg-slate-400",
+                        tag: "",
+                        tagClass: "bg-slate-50 text-slate-600 ring-slate-200",
+                      };
 
-                        <div className="flex items-center justify-between">
+                      const pct = driver.contribution * 100;
 
-                          <span className="text-sm font-semibold capitalize 2xl:text-base">
-                            {formatLabel(
-                              driver.feature
-                            )}
-                          </span>
+                      return (
+                        <div
+                          key={`${driver.feature}-${index}`}
+                          className="flex flex-col justify-center"
+                        >
 
-                          <span className="text-base font-bold">
-                            {(
-                              driver.contribution *
-                              100
-                            ).toFixed(1)}
-                            %
-                          </span>
+                          <div className="flex items-center justify-between gap-2">
+
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span
+                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-extrabold text-white shadow-sm 2xl:h-7 2xl:w-7 2xl:text-sm ${scale.chip}`}
+                              >
+                                {index + 1}
+                              </span>
+
+                              <span className="truncate text-sm font-bold capitalize 2xl:text-base">
+                                {formatLabel(driver.feature)}
+                              </span>
+                            </span>
+
+                            <span className="shrink-0 text-base font-extrabold tabular-nums 2xl:text-lg">
+                              {pct.toFixed(1)}%
+                            </span>
+
+                          </div>
+
+                          <div className="mt-1.5 h-3 overflow-hidden rounded-full bg-slate-200/70 2xl:h-3.5">
+
+                            <div
+                              className={`h-full rounded-full transition-[width] duration-700 ease-out ${scale.bar}`}
+                              style={{ width: `${Math.min(pct, 100)}%` }}
+                            />
+
+                          </div>
+
+                          <div className="mt-1.5 flex items-center justify-between gap-2">
+
+                            <p className="min-w-0 truncate text-xs font-medium text-slate-500 2xl:text-sm">
+                              {driverMeaning(driver.feature)}
+                            </p>
+
+                            <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-xs font-bold tabular-nums text-slate-700 ring-1 ring-slate-200 2xl:text-sm">
+                              {driver.value}
+                            </span>
+
+                          </div>
 
                         </div>
-
-                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-sky-100">
-
-                          <div
-                            className="h-full rounded-full bg-sky-600 transition-[width] duration-700 ease-out"
-                            style={{
-                              width: `${
-                                driver.contribution *
-                                100
-                              }%`,
-                            }}
-                          />
-
-                        </div>
-
-                        <p className="mt-1 text-xs text-slate-500 2xl:text-sm">
-                          {driver.value}
-                        </p>
-
-                      </div>
-                    )
+                      );
+                    }
                   )}
 
                 </div>
@@ -2190,53 +2347,75 @@ export default function Home() {
 
               {/* ACTIONS */}
 
-              <div className="order-2 flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="order-2 coldtrack-rail coldtrack-rail-teal flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-teal-400/70 bg-white/75 p-3 pl-4 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
-                <div className="mb-3 flex shrink-0 items-center justify-between">
+                <div className="mb-3 flex shrink-0 items-center gap-2.5">
 
-                  <div>
+                  <IconBadge tone="teal">
+                    <IcoActionList className="h-full w-full" />
+                  </IconBadge>
 
-                    <h3 className="text-base font-bold 2xl:text-lg">
+                  <div className="min-w-0">
+
+                    <h3 className="text-lg font-extrabold tracking-tight 2xl:text-xl">
                       Rekomendasi Tindakan
                     </h3>
 
-                    <p className="mt-0.5 text-xs text-slate-500 2xl:text-sm">
+                    <p className="mt-0.5 truncate text-sm font-semibold text-slate-600 2xl:text-base">
                       Tiga langkah prioritas berdasarkan kondisi perjalanan.
                     </p>
 
                   </div>
-
-                  <IconBadge tone="teal">
-                    <IcoActionList className="h-[18px] w-[18px]" />
-                  </IconBadge>
 
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto">
 
                   {result.actions.map(
-                    (action) => (
-                      <div
-                        key={action.priority}
-                        className="flex items-center gap-3 rounded-xl bg-sky-50/70 p-3"
-                      >
+                    (action, index) => {
+                      // step colour darkens with priority: act on 1 first
+                      const dot = [
+                        "bg-gradient-to-br from-teal-500 to-emerald-500",
+                        "bg-gradient-to-br from-teal-600 to-teal-500",
+                        "bg-gradient-to-br from-slate-500 to-slate-400",
+                      ][index] ?? "bg-slate-500";
 
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-900 text-sm font-bold text-white 2xl:h-10 2xl:w-10 2xl:text-base">
-                          {action.priority}
+                      const isLast = index === result.actions.length - 1;
+
+                      return (
+                        <div
+                          key={action.priority}
+                          className="relative flex items-center gap-3 rounded-xl bg-teal-50/60 p-3"
+                        >
+
+                          {/* connector to the next step - makes the three rows
+                              read as an ordered sequence, not a flat list */}
+                          {!isLast && (
+                            <span
+                              aria-hidden="true"
+                              className="absolute bottom-1 left-[27px] top-[calc(50%+18px)] w-0.5 rounded-full bg-teal-300 2xl:left-[31px] 2xl:top-[calc(50%+22px)]"
+                            />
+                          )}
+
+                          <div
+                            className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm ring-2 ring-white 2xl:h-10 2xl:w-10 2xl:text-base ${dot}`}
+                          >
+                            {action.priority}
+                          </div>
+
+                          <p className="min-w-0 flex-1 text-sm font-medium leading-snug 2xl:text-base">
+                            {action.text}
+                          </p>
+
+                          {action.eta_min !== null && (
+                            <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-sm font-bold text-teal-700 ring-1 ring-teal-200 2xl:text-base">
+                              {action.eta_min}m
+                            </span>
+                          )}
+
                         </div>
-
-                        <p className="min-w-0 flex-1 text-sm font-medium leading-snug 2xl:text-base">
-                          {action.text}
-                        </p>
-
-                        {action.eta_min !== null && (
-                          <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-sm font-bold text-sky-700 ring-1 ring-sky-200 2xl:text-base">
-                            {action.eta_min}m
-                          </span>
-                        )}
-
-                      </div>
-                    )
+                      );
+                    }
                   )}
 
                 </div>
@@ -2245,15 +2424,15 @@ export default function Home() {
 
               {/* AI ASSESSMENT */}
 
-              <div className="order-3 flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="order-3 coldtrack-rail coldtrack-rail-indigo flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-blue-400/70 bg-white/75 p-3 pl-4 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-2 flex shrink-0 items-center gap-2">
 
                   <IconBadge>
-                    <IcoBrain className="h-[18px] w-[18px]" />
+                    <IcoBrain className="h-full w-full" />
                   </IconBadge>
 
-                  <h3 className="text-base font-bold 2xl:text-lg">
+                  <h3 className="text-lg font-extrabold tracking-tight 2xl:text-xl">
                     AI Assessment
                   </h3>
 
@@ -2291,19 +2470,19 @@ export default function Home() {
                     </div>
 
                     {/* Confidence is only meaningful next to the model's known
-                        per-class reliability — see docs/model_card.md. */}
+                        per-class reliability - see docs/model_card.md. */}
                     <p className="text-xs font-medium leading-snug text-slate-600 2xl:text-base 2xl:leading-relaxed">
                       {result.failure_mode.confidence >= 0.8
-                        ? "Keyakinan tinggi — diagnosis konsisten dengan pola fitur."
+                        ? "Keyakinan tinggi - diagnosis konsisten dengan pola fitur."
                         : result.failure_mode.confidence >= 0.5
-                        ? "Keyakinan sedang — verifikasi dengan kondisi lapangan."
-                        : "Keyakinan rendah — perlakukan sebagai indikasi awal, bukan kesimpulan."}
+                        ? "Keyakinan sedang - verifikasi dengan kondisi lapangan."
+                        : "Keyakinan rendah - perlakukan sebagai indikasi awal, bukan kesimpulan."}
                     </p>
 
                   </div>
 
                   <div
-                    className="relative flex aspect-square h-full max-h-[8.5rem] shrink-0 self-center items-center justify-center rounded-full 2xl:max-h-[16rem]"
+                    className="relative flex aspect-square h-full max-h-[7rem] shrink-0 self-center items-center justify-center rounded-full 2xl:max-h-[11rem]"
                     style={{
                       background: `conic-gradient(#0284c7 ${Math.min(
                         confidenceCount,
@@ -2332,15 +2511,15 @@ export default function Home() {
 
               {/* AI SUMMARY */}
 
-              <div className="order-1 flex min-h-0 min-w-0 flex-col rounded-xl border border-white/60 bg-white/75 p-3 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
+              <div className="order-1 coldtrack-rail coldtrack-rail-sky flex min-h-0 min-w-0 flex-col coldtrack-card rounded-xl border-2 border-sky-400/70 bg-white/75 p-3 pl-4 shadow-sm ring-1 ring-sky-100/60 backdrop-blur-md">
 
                 <div className="mb-2 flex shrink-0 items-center gap-2">
 
                   <IconBadge tone="cyan">
-                    <IcoSummaryDoc className="h-[18px] w-[18px]" />
+                    <IcoSummaryDoc className="h-full w-full" />
                   </IconBadge>
 
-                  <h3 className="text-base font-bold 2xl:text-lg">
+                  <h3 className="text-lg font-extrabold tracking-tight 2xl:text-xl">
                     AI Summary
                   </h3>
 
