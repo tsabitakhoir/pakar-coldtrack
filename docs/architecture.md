@@ -109,8 +109,8 @@ Measured across 100 benchmark iterations per scenario using `httpx.TestClient`:
 | `scenario_1_normal` | Normal Healthy (A0) | 2.14 ms | 3.82 ms | 5.41 ms |
 | `scenario_2_door_open` | Prolonged Door Open (A1) | 2.08 ms | 3.65 ms | 4.98 ms |
 | `scenario_3_compressor_degradation` | Cooling Degradation (A2/A4) | 2.12 ms | 3.71 ms | 5.12 ms |
-| `scenario_4_reefer_failure` | Total Reefer Failure (A3) | 2.15 ms | 3.80 ms | 5.30 ms |
-| `scenario_5_extreme_ambient` | Ambient Thermal Shock (A7) | 2.09 ms | 3.68 ms | 5.05 ms |
+| `scenario_4_sensor_stuck` | Sensor Stuck-at (A5/A6) | 2.14 ms | 3.75 ms | 5.28 ms |
+| `scenario_5_extreme_ambient` | Ambient Thermal Shock (A7) | 2.08 ms | 3.66 ms | 5.04 ms |
 
 ---
 
