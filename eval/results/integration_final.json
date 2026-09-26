@@ -1,5 +1,7 @@
 {
   "tag": "final",
+  "server_commit": "a9a56fa",
+  "frontend_commit": "8e374a0",
   "ui": "http://localhost:3002",
   "api": "http://localhost:8010",
   "scenarios": [

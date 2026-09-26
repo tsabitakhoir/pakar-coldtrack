@@ -18,6 +18,7 @@ import datetime as dt
 import json
 import math
 import re
+import subprocess
 import tempfile
 import urllib.request
 from pathlib import Path
@@ -70,10 +71,12 @@ def main():
     ap.add_argument("--api", default="http://localhost:8000")
     ap.add_argument("--chrome", default="/usr/bin/google-chrome")
     ap.add_argument("--tag", default="final")
+    ap.add_argument("--frontend-commit", default="", help="commit the served frontend was built from (recorded in the result)")
     a = ap.parse_args()
 
     tmp = Path(tempfile.mkdtemp())
-    out = {"tag": a.tag, "ui": a.ui, "api": a.api, "scenarios": [], "csv": {}, "failure_handling": {}, "console_errors": []}  # console_errors: all, incl. the deliberate 500 in section 3
+    server_commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, cwd=ROOT).stdout.strip()
+    out = {"tag": a.tag, "server_commit": server_commit, "frontend_commit": a.frontend_commit, "ui": a.ui, "api": a.api, "scenarios": [], "csv": {}, "failure_handling": {}, "console_errors": []}  # console_errors: all, incl. the deliberate 500 in section 3
 
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path=a.chrome, args=["--no-sandbox"])

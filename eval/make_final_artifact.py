@@ -63,6 +63,8 @@ def main():
     n_pass = sum(c == "PASSED" for c, _ in checks)
     ev = F["G2_events"]["per_event"]
     ui_ok = UI["summary"]
+    main_sha = git("rev-parse", "--short", "origin/main")
+    same_core = subprocess.run(["git", "diff", "--quiet", "c336a2a", "origin/main", "--", "backend", "ml"]).returncode == 0
     on_main = "origin/main" in git("branch", "-r", "--contains", "8e374a0")
     where = "merged into main" if on_main else "on branch frontend-ui, not yet on main at the time of writing"
 
@@ -86,7 +88,7 @@ def main():
     # ================= page 1: what / summary =================
     s += [p("ColdTrack AI: Evaluation Artifact", H1),
           p("Integration, Iteration and Evaluation (final)", H2),
-          p("AIC COMPFEST 18 Final · Smart Logistics · 26 September 2026 · built on commit <b>%s</b> (fix/iteration, iteration 2)" % git("rev-parse", "--short", "HEAD"), Sm),
+          p("AIC COMPFEST 18 Final · Smart Logistics · 26 September 2026 · code version: <b>main @ %s</b> plus the eval suite (%s); dashboard tested at frontend-ui @ %s" % (main_sha, F.get("commit", "?"), UI.get("frontend_commit") or "?"), Sm),
           p("What is this document?", H2),
           p("ColdTrack AI watches the sensors of a refrigerated truck and warns the operator before the cargo gets too warm. "
             "This document is the story of one working day, told with measurements. In the morning we measured the prototype from the qualifying round (the <b>baseline</b>) and "
@@ -221,7 +223,7 @@ def main():
             "(2) The new dashboard (pull request #25) builds a 60-minute window from the cargo form and shows status, countdown, truck picture, forecast chart, actions and drivers. "
             "(3) The header now has a scenario dropdown and an Import CSV button (commit 8e374a0, " + where + "): both send real telemetry to the same server instead of the form's synthetic window. "
             "The four dropdown entries A0, A-1, A-2 and A-3 map to the backend scenarios normal, door open, extreme ambient and stuck sensor. "
-            "Tested combination: dashboard at commit 8e374a0, server at fix/iteration c336a2a.", Bd),
+            "Tested combination: dashboard at commit " + (UI.get("frontend_commit") or "?") + ", server code at commit " + UI.get("server_commit", "?") + " (main is " + main_sha + ").", Bd),
           p("<b>How we checked it.</b> The script <font face='Courier'>eval/ui_check.py</font> opens the dashboard in a real browser against a real server and compares what the screen shows with what the API returns for the same data.", Bd),
           table([["Dropdown", "Expected status", "Server says", "Screen shows", "Countdown", "Fault name"]] +
                 [[x["dropdown"], x["expected_status"], x["api_status"], x["ui_status"], f"{x['api_countdown_min']:.0f} min" if x["api_countdown_min"] else "none", x["api_label"]] for x in S],
@@ -272,7 +274,9 @@ def main():
         tags.append([t, git("log", "-1", "--format=%h %ad", "--date=format:%H:%M", t) or "not found"])
     s += [p("Appendix A: acceptance checks (final = iteration 2 engine)", H1),
           table([["Result", "Check"]] + [["PASS" if c == "PASSED" else "FAIL", n] for c, n in checks], [2 * cm, 14.4 * cm]),
-          p("The final run reproduced every one of the 231 numeric results of the iteration 2 run (response times excluded), so the iteration 2 numbers stand for the code being submitted.", Sm),
+          p("The final run (commit " + F.get("commit", "?") + ") reproduced every one of the 231 numeric results of the iteration 2 run, which was measured at c336a2a (response times excluded). "
+            + ("Backend and ml code are identical between c336a2a and main " + main_sha + " (git diff is empty), so the iteration 2 numbers stand for main." if same_core
+               else "WARNING: backend or ml code differs between c336a2a and main " + main_sha + "; re-measure before relying on iteration 2 numbers."), Sm),
           Spacer(1, 8),
           p("Appendix B: how to reproduce", H1),
           p("<font face='Courier'>python -m eval.run_eval --tag final</font> (about 4 min) · <font face='Courier'>EVAL_TAG=final pytest eval/test_baseline.py</font> · "

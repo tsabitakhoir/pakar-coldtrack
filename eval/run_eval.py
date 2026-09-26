@@ -13,6 +13,7 @@ Groups (same test trips/windows as the baseline; metrics follow the new contract
 
 import argparse
 import json
+import subprocess
 import time
 
 import numpy as np
@@ -233,7 +234,8 @@ def main():
         return
     D = eval_rows(trips)
     print(f"[{time.time()-t0:4.0f}s] {len(D):,} test windows, {D.trip_id.nunique()} trips")
-    res = {"tag": a.tag, "contract": "hybrid-v3", "n_windows": int(len(D)), "n_trips": int(D.trip_id.nunique())}
+    commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, cwd=ROOT).stdout.strip()
+    res = {"tag": a.tag, "commit": commit, "contract": "hybrid-v3", "n_windows": int(len(D)), "n_trips": int(D.trip_id.nunique())}
     res["G1_forecast"] = g1_forecast(D)
     res["G2_events"] = g2_events(D)
     res["G3_imminent_breach"] = g3_imminent(D)

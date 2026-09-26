@@ -1,5 +1,6 @@
 {
   "tag": "final",
+  "commit": "a9a56fa",
   "contract": "hybrid-v3",
   "n_windows": 16336,
   "n_trips": 106,
@@ -282,8 +283,8 @@
   "G5_end_to_end_api": {
     "n_requests": 1634,
     "n_http_errors": 0,
-    "latency_ms_p50": 42.392552000819705,
-    "latency_ms_p95": 78.77017065293329,
+    "latency_ms_p50": 45.69522900055745,
+    "latency_ms_p95": 80.34077954725943,
     "true_ttb_le30": {
       "AMAN": 0.016129032258064516,
       "WASPADA": 0.8225806451612904,
