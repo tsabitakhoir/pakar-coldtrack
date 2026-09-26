@@ -187,7 +187,26 @@ def main():
           p(f"<b>Result on the 106 old trips:</b> countdown shown in {pct(m2['cd'])} of urgent cases (iteration 1: {pct(m1['cd'])}, baseline {pct(mb['cd'])}) and accurate when shown "
             f"(off by {R2['G3_imminent_breach']['true_ttb_le30']['mae_when_shown']:.1f} minutes); critical status for {pct(m2['crit'])} of urgent cases (was 0%); "
             f"frozen sensor flagged in {pct(m2['stuck'])} (was 0%); healthy warnings down from {pct(m1['healthy'])} to {pct(m2['healthy'])}; urgent cases treated as safe under 0.3 °C noise: {pct(m1['n03'])} → {pct(m2['n03'])}.", Bd),
-          PageBreak()]
+          PageBreak(),
+          p("Baseline findings F1–F7: what we changed and what we did not", H2),
+          p("Same 106 test trips throughout; open items point to section 5.", Sm),
+          table([["#", "Baseline finding", "What we changed", "Now", "Verdict"],
+                 ["F1", "Urgent cases shown as green.", "The physics engine sets the status; it no longer follows the forecast.",
+                  f"Green {pct(mb['green'])} → {pct(m2['green'])} ({pct(R2['G3_imminent_breach']['true_ttb_le30']['AMAN'])} over all urgent snapshots). Most urgent cases are amber; critical only {pct(m2['crit'])}.", "<b>Fixed</b>"],
+                 ["F2", "Countdown hidden when the classifier says “healthy”.", "Removed that dependence; the countdown comes from physics, plus a drift rule in iteration 2.",
+                  f"Countdown shown {pct(mb['cd'])} → {pct(m2['cd'])} (goal 80%). Physics cannot project a slow drift: {pct(R2['G3_imminent_breach']['true_ttb_le30']['hidden_physics_ttb_above_60'])} stay above the 60-minute display limit (N1).", "<b>Cause removed, outcome worse</b>"],
+                 ["F3", "Sensor noise confuses it.", "Status no longer depends on the classifier. Models not retrained with noise.",
+                  f"Urgent cases treated as safe at 0.3 °C noise {pct(mb['n03'])} → {pct(m2['n03'])}. Fault naming still collapses at 0.1 °C (mean event recall {pct(R2['G4_robustness']['clean']['mean_event_recall'])} → {pct(R2['G4_robustness']['sensor_noise_sigma_0.1C']['mean_event_recall'])}) (N5).", "<b>Partly fixed</b>"],
+                 ["F4", "A frozen sensor is read as healthy.", "Added sensor rules; iteration 2 added “stuck after a rise”.",
+                  f"Flagged {pct(mb['stuck'])} → {pct(m2['stuck'])} (goal 50%); shown green {pct(F['G4_robustness']['stuck_sensor_on_imminent_breach']['status_aman'])}, was {pct(B['G4_robustness']['stuck_sensor_on_imminent_breach']['pred_A0_healthy'])} judged healthy. Fires only if the reading was rising before it froze (N6).", "<b>Partly fixed</b>"],
+                 ["F5", "Forecast target met by a “no change” guess.", "Nothing: the model was not retrained. Only the reporting changed.",
+                  f"Forecast error {mb['fc']:.2f} → {mf['fc']:.2f} °C; “no change” scores {F['G1_forecast']['naive_persistence_mae_t30']:.2f} °C. The dashboard chart draws this forecast (N3).", "<b>Not fixed, regressed</b>"],
+                 ["F6", "Three fault types mostly missed.", "Scope narrowed to 3 events (door open, outside heat, faulty sensor). Cooling degradation, reefer off and poor pre-cooling are no longer named.",
+                  f"Door named {pct(B['G2_classification']['per_class']['A1']['recall'])} → {pct(ev['door']['recall'])}; outside heat {pct(B['G2_classification']['per_class']['A7']['recall'])} → {pct(ev['shock']['recall'])}; faulty sensor {pct(B['G2_classification']['per_class']['masalah_sensor']['recall'])} → {pct(ev['sensor']['recall'])}. Dropped types are judged only through status and countdown (N4).", "<b>Not fixed, scope cut</b>"],
+                 ["F7", "Test data too thin.", f"Added a second test set: {S2['n_test_trips']} held-out trips from the new simulator.",
+                  "The old set is unchanged (2–4 trips for several fault types; no urgent cases for vaccine, frozen meat, fish). The new set is also simulated (N7).", "<b>Partly addressed</b>"]],
+                [0.9 * cm, 3.0 * cm, 4.4 * cm, 6.0 * cm, 2.1 * cm]),
+          Spacer(1, 10)]
 
     sweep_rows = [["Margin for 2–4 °C cargo", "Urgent shown green", "Healthy warned"]] + [
         [f"{r['margin_2_4C']:.1f} °C" + (" (chosen)" if abs(r["frac"] - SW["chosen_frac"]) < 1e-9 else ""), pct(r["urgent_aman"]), pct(r["healthy_alert"])] for r in SW["sweep"]]
