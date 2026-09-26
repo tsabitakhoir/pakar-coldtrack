@@ -30,7 +30,8 @@ pct = lambda x: f"{100 * x:.0f}%"
 
 
 def git(*a):
-    return subprocess.run(["git", *a], capture_output=True, text=True).stdout.strip()
+    # TZ pinned so every commit time is shown in WIB (authors commit from different time zones)
+    return subprocess.run(["git", *a], capture_output=True, text=True, env={**os.environ, "TZ": "Asia/Jakarta"}).stdout.strip()
 
 
 def main():
@@ -280,17 +281,17 @@ def main():
           PageBreak()]
 
     # ================= appendices =================
-    trail = git("log", "--format=%h|%an|%ad|%s", "--date=format:%H:%M", "--since=2026-09-26 00:00", "--reverse", "origin/main", "origin/fix/iteration", "origin/frontend-ui", "eval/integration-final").splitlines()
+    trail = git("log", "--format=%h|%an|%ad|%s", "--date=format-local:%H:%M", "--since=2026-09-26 00:00", "--reverse", "origin/main", "origin/fix/iteration", "origin/frontend-ui", "eval/integration-final").splitlines()
     seen, rows = set(), [["Time", "Commit", "Author", "What"]]
     for l in sorted(trail, key=lambda x: x.split("|")[2]):
         h, a, t, msg = l.split("|", 3)
-        if h in seen or msg.startswith("Merge") or "ColdTrack brand" in msg or "design system" in msg or "ui-ux-pro-max" in msg:
+        if h in seen or msg.startswith("Merge") or "ColdTrack brand" in msg or "design system" in msg or "ui-ux-pro-max" in msg or "commitlint" in msg:
             continue
         seen.add(h)
         rows.append([t, h, a, msg[:78]])
     tags = []
     for t in ["checkpoint-1-baseline", "checkpoint-2-iteration", "checkpoint-2-iteration-2", "checkpoint-3-integration"]:
-        tags.append([t, git("log", "-1", "--format=%h %ad", "--date=format:%H:%M", t) or "not found"])
+        tags.append([t, git("log", "-1", "--format=%h %ad", "--date=format-local:%H:%M", t) or "not found"])
     s += [p("Appendix A: acceptance checks (final = iteration 2 engine)", H1),
           table([["Result", "Check"]] + [["PASS" if c == "PASSED" else "FAIL", n] for c, n in checks], [2 * cm, 14.4 * cm]),
           p("The final run (commit " + F.get("commit", "?") + ") reproduced every one of the 231 numeric results of the iteration 2 run, which was measured at c336a2a (response times excluded). "
