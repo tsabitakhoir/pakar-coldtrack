@@ -1,154 +1,97 @@
-"""Fase 6 R2 -- ekspor model ke ONNX untuk diserahkan ke R3.
-
-Menjalankan: python -m ml.export_onnx
 """
+Ekspor ONNX + cek paritas.
+  python export_onnx.py --data dataset_v3.parquet
 
-import json
-import sys
-import time
-
-import numpy as np
+Hasil:
+  coldtrack_gru.onnx  masukan: x [B,60,8] mentah (T_sensor_clean, T_amb, RH_amb, door_open, moving, hsin, hcos, sensor_bad)
+                               s [B,4]    mentah (log_mass, c_kj_kgc, t_lo, t_hi)
+                      keluaran: event_prob [B,3] (pintu lama, kejut ambien, sensor rusak), temp_c [B,3] (suhu muatan +15/30/60 menit, C)
+                      normalisasi ada DI DALAM graf, jadi masukan tidak perlu dinormalkan lagi.
+  coldtrack_ttb.onnx  masukan: features [B,37] (urutan sesuai xgb_features.txt), keluaran: TTB menit (potong 0..240 di kode pemanggil)
+"""
+import argparse, json, os, numpy as np, torch, torch.nn as nn
 import onnxruntime as ort
-import torch
 
-from ml.model import ColdTrackDeploy, ColdTrackGRU
-from ml.preprocess.build_windows import (
-    FAILURE_CLASSES,
-    HORIZONS,
-    MODE_MAPPING,
-    WINDOW_SIZE,
-)
-from ml.scaler import load_scaler
-from ml.tests.test_data_contract import FEATURE_COLUMNS
+ap = argparse.ArgumentParser()
+ap.add_argument("--data", default="dataset_v3.parquet")
+ap.add_argument("--gru", default="gru_v1.pt")
+ap.add_argument("--scalers", default="scalers_v1.json")
+ap.add_argument("--xgb", default="xgb_ttb.json")
+ap.add_argument("--n_check", type=int, default=512)
+a = ap.parse_args()
 
-sys.stdout.reconfigure(encoding='utf-8')   # exporter PyTorch mencetak emoji; konsol Windows perlu ini
+import train_gru as tg, prep_windows as pw
 
-CHECKPOINT = "ml/reports/coldtrack_finetuned.pt"
-SCALER_PATH = "ml/reports/scaler_finetune.npz"
-VAL_PATH = "data/processed/windows/windows_val.npz"
-ONNX_PATH = "ml/reports/coldtrack.onnx"
-LABELS_PATH = "ml/reports/labels.json"
+# ------------------------------------------------------------------ data uji untuk cek paritas
+import pandas as pd
+ds = pd.read_parquet(a.data)
+sp = pw.split_trips(ds)
+Xte, Ste, Yte, _ = pw.make_windows(ds, sp["test"])
+Xte, Ste = Xte[:a.n_check], Ste[:a.n_check]
 
-TOLERANCE = 1e-4
-
-
-def build_deploy_model():
-    mean, std = load_scaler(SCALER_PATH)
-    core = ColdTrackGRU()
-    core.load_state_dict(torch.load(CHECKPOINT))
-    core.eval()
-    return ColdTrackDeploy(core, mean, std).eval()
+# ------------------------------------------------------------------ GRU
+sc = json.load(open(a.scalers))
+model = tg.ColdGRU(12)
+model.load_state_dict(torch.load(a.gru, map_location="cpu"))
+model.eval()
 
 
-def export(model):
-    torch.onnx.export(
-        model,
-        torch.randn(1, WINDOW_SIZE, len(FEATURE_COLUMNS)),
-        ONNX_PATH,
-        input_names=['window'],
-        output_names=['forecast_c', 'failure_prob', 'time_to_breach_min'],
-        dynamic_axes={
-            'window': {0: 'batch'},
-            'forecast_c': {0: 'batch'},
-            'failure_prob': {0: 'batch'},
-            'time_to_breach_min': {0: 'batch'},
-        },
-        opset_version=17,
-        dynamo=False,      # exporter lama -- dynamic_axes untuk output baru berlaku di sini
-    )
-    print(f"Tersimpan: {ONNX_PATH}")
+class Deploy(nn.Module):
+    """Normalisasi + GRU dalam satu graf. Kolom kontinu = 3 kolom pertama (tg.CONT_IDX = [0,1,2])."""
+    def __init__(self, m, sc):
+        super().__init__()
+        self.m = m
+        f = lambda v: torch.tensor(np.array(v, dtype=np.float32))
+        self.register_buffer("x_mu", f(sc["x_mu"])); self.register_buffer("x_sd", f(sc["x_sd"]))
+        self.register_buffer("s_mu", f(sc["s_mu"])); self.register_buffer("s_sd", f(sc["s_sd"]))
+        self.t_mu = float(sc["t_mu"]); self.t_sd = float(sc["t_sd"])
+
+    def forward(self, x, s):
+        cont = (x[:, :, :3] - self.x_mu) / self.x_sd
+        x2 = torch.cat([cont, x[:, :, 3:]], dim=2)
+        sn = ((s - self.s_mu) / self.s_sd).unsqueeze(1).expand(-1, x.shape[1], -1)
+        e, t, _ = self.m(torch.cat([x2, sn], dim=2))
+        return torch.sigmoid(e), t * self.t_sd + self.t_mu
 
 
-def verify_parity(model):
-    """Bandingkan output ONNX vs PyTorch di data val asli."""
-    raw = np.load(VAL_PATH)['X'][:64].astype(np.float32)
+dep = Deploy(model, sc).eval()
+xd = torch.tensor(Xte); sd = torch.tensor(Ste)
+kw = dict(input_names=["x", "s"], output_names=["event_prob", "temp_c"], opset_version=17,
+          dynamic_axes={"x": {0: "batch"}, "s": {0: "batch"}, "event_prob": {0: "batch"}, "temp_c": {0: "batch"}})
+try:
+    torch.onnx.export(dep, (xd[:2], sd[:2]), "coldtrack_gru.onnx", dynamo=False, **kw)
+except TypeError:
+    torch.onnx.export(dep, (xd[:2], sd[:2]), "coldtrack_gru.onnx", **kw)
 
-    with torch.no_grad():
-        ref = [t.numpy() for t in model(torch.tensor(raw))]
+with torch.no_grad():
+    pe, pt = dep(xd, sd)
+sess = ort.InferenceSession("coldtrack_gru.onnx", providers=["CPUExecutionProvider"])
+oe, ot = sess.run(None, {"x": Xte.astype(np.float32), "s": Ste.astype(np.float32)})
+d1, d2 = np.abs(oe - pe.numpy()).max(), np.abs(ot - pt.numpy()).max()
+print(f"GRU  : {os.path.getsize('coldtrack_gru.onnx') / 1024:.0f} KB | selisih maks event {d1:.2e} | suhu {d2:.2e} C",
+      "-> PARITAS OK" if max(d1, d2) < 1e-3 else "-> PERIKSA (selisih besar)")
 
-    sess = ort.InferenceSession(ONNX_PATH)
-    got = sess.run(None, {'window': raw})
-
-    print(f"\nVerifikasi kesetaraan numerik (toleransi {TOLERANCE}):")
-    all_ok = True
-    for name, a, b in zip(['forecast_c', 'failure_prob', 'time_to_breach_min'], ref, got):
-        abs_diff = np.abs(a - b).max()
-        rel_diff = abs_diff / max(np.abs(a).max(), 1e-9)
-        ok = abs_diff < TOLERANCE or rel_diff < TOLERANCE
-        all_ok &= ok
-        catatan = "" if abs_diff < TOLERANCE else f"  (lolos via selisih relatif {rel_diff:.2e})"
-        print(f"  {name:20s} selisih maks = {abs_diff:.3e}  {'OK' if ok else 'GAGAL'}{catatan}")
-    return all_ok, sess
-
-
-def benchmark(sess, n=200):
-    sample = np.random.randn(1, WINDOW_SIZE, len(FEATURE_COLUMNS)).astype(np.float32)
-    sess.run(None, {'window': sample})            # sekali dulu untuk pemanasan
-    t0 = time.perf_counter()
-    for _ in range(n):
-        sess.run(None, {'window': sample})
-    ms = (time.perf_counter() - t0) / n * 1000
-    print(f"\nLatensi inferensi (batch=1, CPU): {ms:.2f} ms   (target <300 ms)")
-
-
-def write_labels():
-    """Kontrak model untuk R3 -- semua yang perlu diketahui backend."""
-    contract = {
-        "model_version": "v2-fusion-dilatih-dari-nol-di-v4",
-        "arsitektur": "GRU 2 lapis (hidden 64) + statistik ringkasan jendela, 3 kepala tugas",
-        "parameter": 41443,
-        "input": {
-            "name": "window",
-            "shape": ["batch", WINDOW_SIZE, len(FEATURE_COLUMNS)],
-            "dtype": "float32",
-            "features": FEATURE_COLUMNS,
-            "catatan": "Nilai MENTAH, tidak perlu dinormalisasi. Urutan kolom wajib persis seperti di atas. Baris terakhir jendela = menit 'sekarang'.",
-        },
-        "outputs": {
-            "forecast_c": {
-                "shape": ["batch", len(HORIZONS)],
-                "satuan": "derajat Celsius",
-                "horizons_menit": HORIZONS,
-            },
-            "failure_prob": {
-                "shape": ["batch", len(FAILURE_CLASSES)],
-                "satuan": "probabilitas 0-1, jumlahnya 1",
-                "classes": FAILURE_CLASSES,
-            },
-            "time_to_breach_min": {
-                "shape": ["batch"],
-                "satuan": "menit",
-                "catatan": "Hanya bermakna bila failure_prob menunjuk ke kelas non-A0. Head ini dilatih dengan sentinel 999 di-mask dari loss, jadi keluarannya tidak terdefinisi untuk kondisi sehat.",
-            },
-        },
-        "mode_mapping": MODE_MAPPING,
-        "metrik_validasi": {
-            "forecast_t30_mae_c": 0.219,
-            "macro_f1": 0.604,
-            "akurasi": 0.796,
-            "ttb_mae_menit": 21.36,
-            "anomali_pr_auc": 0.683,
-        },
-        "keterbatasan": [
-            "Dilatih pada dataset v4 (label per-baris sudah terkoreksi). Target Macro F1 (>0.80), TTB (<8 menit), dan PR-AUC (>0.85) belum tercapai; hanya forecast yang lolos target (<0.8 C).",
-            "XGBoost sebagai baseline unggul pada klasifikasi (F1 0.692) dan deteksi anomali (PR-AUC 0.755); GRU dipilih karena unggul pada Time-to-Breach yang merupakan fitur pembeda produk, dan cukup satu model untuk tiga keluaran. Rincian di ml/reports/baseline_metrics.json.",
-            "Model dilatih dari nol, bukan dari backbone pretrained -- ablation menunjukkan pretraining tidak memberi manfaat pada domain ini. Rincian di ml/reports/ablation_results.json.",
-        ],
-    }
-    with open(LABELS_PATH, 'w', encoding='utf-8') as f:
-        json.dump(contract, f, indent=2, ensure_ascii=False)
-    print(f"Tersimpan: {LABELS_PATH}")
-
-
-
-def main():
-    model = build_deploy_model()
-    export(model)
-    ok, sess = verify_parity(model)
-    benchmark(sess)
-    write_labels()
-    print("\nSiap diserahkan ke R3." if ok else "\nADA YANG GAGAL -- jangan diserahkan dulu.")
-
-
-if __name__ == "__main__":
-    main()
+# ------------------------------------------------------------------ XGBoost
+try:
+    import xgboost as xgb
+    from onnxmltools.convert import convert_xgboost
+    from onnxmltools.convert.common.data_types import FloatTensorType
+    import ttb_features as tf, observer as ob
+    m = xgb.XGBRegressor(); m.load_model(a.xgb)
+    n = m.n_features_in_
+    onx = convert_xgboost(m, initial_types=[("features", FloatTensorType([None, n]))], target_opset=15)
+    with open("coldtrack_ttb.onnx", "wb") as f: f.write(onx.SerializeToString())
+    # fitur uji (pembagian trip sama dengan latihan)
+    a1, _ = tf.build(*[out for out in (Xte, Ste)])
+    ids = sorted(sp["test"])
+    e2, _ = ob.windows_extra(ds, sp["test"]); p2, _ = ob.projection_features(ds, sp["test"])
+    Ft = np.hstack([tf.build(*pw.make_windows(ds, sp["test"])[:2])[0], e2, p2])[:a.n_check].astype(np.float32)
+    s2 = ort.InferenceSession("coldtrack_ttb.onnx", providers=["CPUExecutionProvider"])
+    po = s2.run(None, {"features": Ft})[0].ravel()
+    px = m.predict(Ft)
+    d3 = np.abs(po - px).max()
+    print(f"XGB  : {os.path.getsize('coldtrack_ttb.onnx') / 1024:.0f} KB | selisih maks TTB {d3:.2e} menit",
+          "-> PARITAS OK" if d3 < 1e-2 else "-> PERIKSA (selisih besar)")
+except Exception as ex:
+    print("XGB ekspor gagal:", type(ex).__name__, ex)
+    print("Coba:  python -m pip install \"xgboost<2.1\"  lalu latih ulang (run_train_xgb.py) dan jalankan skrip ini lagi.")
