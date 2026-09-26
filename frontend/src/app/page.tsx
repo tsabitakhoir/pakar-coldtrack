@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AppHeader } from "@/components/app-header";
+import { AppHeader, DataSource } from "@/components/app-header";
 import { ConditionForm, validateCondition } from "@/components/condition-form";
 import { ActionBanner } from "@/components/action-banner";
 import { VehicleStatus } from "@/components/vehicle-status";
@@ -13,7 +13,9 @@ import { ActionSteps } from "@/components/action-steps";
 import { DriverList } from "@/components/driver-list";
 import { ResultEmpty, ResultError, ResultSkeleton } from "@/components/panel-states";
 import { ApiError, analyzeShipment } from "@/lib/api";
+import { MIN_READINGS, parseReadingsCsv } from "@/lib/csv";
 import { profileById } from "@/lib/profiles";
+import { conditionFromReadings, fetchScenario } from "@/lib/scenarios";
 import { buildWindow } from "@/lib/window";
 import { AnalyzeResponse, ConditionInput, TelemetryReading } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -34,6 +36,16 @@ const INITIAL: ConditionInput = {
   stoppedMinutes: 10,
 };
 
+/** Data dari skenario/CSV yang menggantikan jendela bacaan buatan formulir. */
+interface Feed {
+  source: NonNullable<DataSource>;
+  readings: TelemetryReading[];
+}
+
+// Bidang formulir yang tetap berlaku saat memakai data skenario/CSV; mengubah bidang
+// lain berarti pengguna ingin kembali ke input manual.
+const KEEP_FEED_KEYS: (keyof ConditionInput)[] = ["shipmentId", "cargoProfile", "massKg"];
+
 interface Analysis {
   result: AnalyzeResponse;
   readings: TelemetryReading[];
@@ -46,16 +58,23 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
+  const [feed, setFeed] = useState<Feed | null>(null);
+  const [feedBusy, setFeedBusy] = useState(false);
   const inFlight = useRef<AbortController | null>(null);
 
-  const errors = useMemo(() => validateCondition(input), [input]);
+  // Dengan data skenario/CSV, hanya ID & massa yang divalidasi; suhu dll. diambil dari bacaan.
+  const errors = useMemo(() => {
+    const e = validateCondition(input);
+    if (!feed) return e;
+    return Object.fromEntries(Object.entries(e).filter(([k]) => k === "shipmentId" || k === "massKg"));
+  }, [input, feed]);
   const valid = Object.keys(errors).length === 0;
 
-  const run = useCallback(async (c: ConditionInput) => {
+  const run = useCallback(async (c: ConditionInput, f: Feed | null) => {
     inFlight.current?.abort();
     const ctrl = new AbortController();
     inFlight.current = ctrl;
-    const readings = buildWindow(c, new Date());
+    const readings = f ? f.readings : buildWindow(c, new Date());
     setLoading(true);
     setError(null);
     try {
@@ -74,18 +93,69 @@ export default function Home() {
 
   useEffect(() => {
     if (!valid) return;
-    const t = setTimeout(() => run(input), DEBOUNCE_MS);
+    const t = setTimeout(() => run(input, feed), DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [input, valid, retry, run]);
+  }, [input, feed, valid, retry, run]);
+
+  function handleForm(next: ConditionInput) {
+    if (feed && (Object.keys(next) as (keyof ConditionInput)[]).some((k) => next[k] !== input[k] && !KEEP_FEED_KEYS.includes(k))) {
+      setFeed(null); // kembali ke input manual
+    }
+    setInput(next);
+  }
+
+  async function handleScenario(id: string) {
+    setFeedBusy(true);
+    setError(null);
+    try {
+      const sc = await fetchScenario(id);
+      setFeed({ source: { kind: "scenario", id }, readings: sc.readings });
+      setInput((prev) => conditionFromReadings(sc.readings, sc.cargoProfile, prev));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gagal memuat skenario.");
+    } finally {
+      setFeedBusy(false);
+    }
+  }
+
+  async function handleCsv(file: File) {
+    setFeedBusy(true);
+    setError(null);
+    try {
+      const readings = parseReadingsCsv(await file.text());
+      if (readings.length === 0) throw new Error("CSV tidak berisi bacaan yang valid.");
+      if (readings.length < MIN_READINGS) {
+        throw new Error(`CSV berisi ${readings.length} baris; model butuh minimal ${MIN_READINGS} bacaan (satu per menit).`);
+      }
+      setFeed({ source: { kind: "csv", name: file.name }, readings });
+      setInput((prev) => conditionFromReadings(readings, prev.cargoProfile, prev));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gagal membaca CSV.");
+    } finally {
+      setFeedBusy(false);
+    }
+  }
 
   const a = analysis;
   const profile = profileById((a?.input ?? input).cargoProfile);
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <AppHeader model={analysis?.result.model_version} />
+      <AppHeader
+        model={analysis?.result.model_version}
+        source={feed?.source ?? null}
+        busy={feedBusy}
+        onSelectScenario={handleScenario}
+        onImportCsv={handleCsv}
+      />
 
       <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-5 p-4 lg:p-6">
+        {feed && !error && (
+          <p className="rounded-lg border bg-tint px-4 py-2 text-[13px] text-brand-strong">
+            Menganalisis {feed.source.kind === "csv" ? `berkas ${feed.source.name}` : "data skenario"} ({feed.readings.length} bacaan).
+            ID dan massa bisa diubah; mengubah suhu atau kondisi lain kembali ke input manual.
+          </p>
+        )}
         {error && <ResultError message={error} onRetry={() => setRetry((n) => n + 1)} />}
         {a && <ActionBanner result={a.result} />}
 
@@ -97,7 +167,7 @@ export default function Home() {
                 <VehicleStatus result={a.result} />
               </div>
             )}
-            <ConditionForm value={input} errors={errors} onChange={setInput} />
+            <ConditionForm value={input} errors={errors} onChange={handleForm} />
           </div>
 
           {/* Center + right: results */}
