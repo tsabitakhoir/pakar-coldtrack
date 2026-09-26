@@ -42,3 +42,15 @@ check outcomes are archived in `results/baseline_results.json` and `results/Eval
 | `sim_check.py` | per-trip regression check on the new simulator's held-out trips (guards against tuning to v4) |
 | `make_artifact.py` | builds `Evaluation_Artifact_Iteration.pdf` (`--tag iter1`) and `Evaluation_Artifact_Iteration_2.pdf` (`--iteration 2`) |
 | `results/` | JSON results, figures, PDF |
+
+## Final artifact (integration + iteration + evaluation)
+
+`ui_check.py` drives the real dashboard in a browser against the real server (4 demo scenarios, CSV cases, failure cases) and
+`make_final_artifact.py` builds one PDF from all committed results (baseline, iter1, iter2, final, integration):
+
+```bash
+python -m eval.run_eval --tag final                                       # reproduces iter2 exactly on the same code
+pip install playwright                                                    # + a Chrome/Chromium binary
+python -m eval.ui_check --ui http://localhost:3000 --api http://localhost:8000 --tag final
+python -m eval.make_final_artifact   # -> results/Evaluation_Artifact_Integration_Iteration_Evaluation.pdf
+```

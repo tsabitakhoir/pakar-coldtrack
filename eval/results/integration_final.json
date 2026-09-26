@@ -1,0 +1,94 @@
+{
+  "tag": "final",
+  "ui": "http://localhost:3002",
+  "api": "http://localhost:8010",
+  "scenarios": [
+    {
+      "dropdown": "A0 – Aman",
+      "backend_scenario": "scenario_1_normal",
+      "expected_status": "AMAN",
+      "api_status": "AMAN",
+      "ui_status": "AMAN",
+      "ui_matches_api": true,
+      "api_matches_expected": true,
+      "api_countdown_min": null,
+      "api_label": "normal_sehat",
+      "action_shown": true
+    },
+    {
+      "dropdown": "A-1 – Pintu Terbuka",
+      "backend_scenario": "scenario_2_door_open",
+      "expected_status": "KRITIS",
+      "api_status": "KRITIS",
+      "ui_status": "KRITIS",
+      "ui_matches_api": true,
+      "api_matches_expected": true,
+      "api_countdown_min": 21.1,
+      "api_label": "pintu_terbuka",
+      "action_shown": true
+    },
+    {
+      "dropdown": "A-2 – Kejut Ambient",
+      "backend_scenario": "scenario_5_extreme_ambient",
+      "expected_status": "WASPADA",
+      "api_status": "WASPADA",
+      "ui_status": "WASPADA",
+      "ui_matches_api": true,
+      "api_matches_expected": true,
+      "api_countdown_min": null,
+      "api_label": "suhu_muatan_mendekati_batas",
+      "action_shown": true
+    },
+    {
+      "dropdown": "A-3 – Sensor Macet",
+      "backend_scenario": "scenario_4_sensor_stuck",
+      "expected_status": "WASPADA",
+      "api_status": "WASPADA",
+      "ui_status": "WASPADA",
+      "ui_matches_api": true,
+      "api_matches_expected": true,
+      "api_countdown_min": null,
+      "api_label": "masalah_sensor",
+      "action_shown": true
+    }
+  ],
+  "csv": {
+    "good_file": {
+      "rows": 90,
+      "ui_status": "WASPADA",
+      "shows_result": true,
+      "button_shows_filename": true
+    },
+    "too_short_file": {
+      "error_shown": true,
+      "message": "Analisis gagal  CSV berisi 20 baris; model butuh minimal 60 bacaan (satu per menit).  Coba lagi",
+      "no_stack_trace": true
+    },
+    "wrong_columns_file": {
+      "error_shown": true,
+      "message": "Analisis gagal  CSV harus punya kolom `temp_c`. Kolom lain yang dikenali: ts, humidity, ambient_c, door_open, reefer_on, speed_kmh, harsh_events.  Coba lagi",
+      "no_stack_trace": true
+    }
+  },
+  "failure_handling": {
+    "server_unreachable": {
+      "message": "Analisis gagal  Server analisis tidak bisa dihubungi (http://localhost:8010). Pastikan backend berjalan.  Coba lagi",
+      "has_retry_button": true
+    },
+    "server_error_500": {
+      "message": "Analisis gagal  Server mengembalikan error (500).  Coba lagi",
+      "no_raw_body_shown": true
+    },
+    "slow_server_shows_loading_state": true
+  },
+  "console_errors": [
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+  ],
+  "summary": {
+    "scenarios_ui_matches_api": "4/4",
+    "scenarios_api_matches_expected": "4/4",
+    "console_errors_in_normal_use": 0,
+    "csv_and_failure_cases_ok": true
+  }
+}
