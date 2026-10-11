@@ -75,7 +75,7 @@ def nilai(data, statuses, d, h):
         "D": d, "H": h,
         "episode_per_jam_normal": ep_normal / (m_normal / 60.0),
         "menit_episode_normal": menit_ep / m_normal,
-        "n_trip_breach_dinilai": int(len(leads)),
+        "n_trip_breach_dinilai": len(leads),
         "breach_terlewat_lead_lt10": int((leads < LEAD_MIN).sum()),
         "breach_tanpa_peringatan": int((leads == 0).sum()),
         "lead_median_menit": float(np.median(leads)) if len(leads) else None,

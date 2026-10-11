@@ -33,9 +33,9 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "backend"), str(ROOT)]
 
-from app.core import engine  # noqa: E402
-from app.inference import cargo_params, readings_to_trip  # noqa: E402
-from eval.common import CARGO_TO_PROFILE, DATA_PATH, SENTINEL, trip_readings  # noqa: E402
+from app.core import engine
+from app.inference import cargo_params, readings_to_trip
+from eval.common import CARGO_TO_PROFILE, DATA_PATH, SENTINEL, trip_readings
 
 FRACS = (0.15, 0.20, 0.25, 0.30, 0.35, 0.40)
 SEKARANG = 0.35
@@ -114,7 +114,7 @@ def nilai(data, frac):
             "episode_alarm_per_jam_normal": normal_ep / (normal_m / 60.0),
             "alarm_per_menit_label_A0": a0_alarm / a0_m,
             "alarm_palsu_per_profil": {k: v[1] / v[0] for k, v in sorted(per_prof.items())},
-            "n_trip_breach_dinilai": int(len(leads)),
+            "n_trip_breach_dinilai": len(leads),
             "breach_terlewat_lead_lt10": int((leads < LEAD_MIN).sum()),
             "breach_tanpa_peringatan": int((leads == 0).sum()),
             "lead_median_menit": float(np.median(leads)) if len(leads) else None,
