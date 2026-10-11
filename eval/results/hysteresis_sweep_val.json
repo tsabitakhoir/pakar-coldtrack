@@ -1,0 +1,174 @@
+{
+  "split": "val",
+  "margin_waspada_frac": 0.25,
+  "n_trip_normal": 62,
+  "kriteria": "episode/jam normal terendah dengan breach_terlewat_lead_lt10 <= (D=0,H=0); seri -> D lalu H terkecil",
+  "usulan": {
+    "D": 0,
+    "H": 15
+  },
+  "diterapkan": false,
+  "sapuan": [
+    {
+      "D": 0,
+      "H": 0,
+      "episode_per_jam_normal": 0.4258241758241758,
+      "menit_episode_normal": 0.17574786324786323,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 0,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 37.5
+    },
+    {
+      "D": 0,
+      "H": 5,
+      "episode_per_jam_normal": 0.3983516483516483,
+      "menit_episode_normal": 0.190018315018315,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 0,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 39.5
+    },
+    {
+      "D": 0,
+      "H": 10,
+      "episode_per_jam_normal": 0.3708791208791209,
+      "menit_episode_normal": 0.2071886446886447,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 0,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 39.5
+    },
+    {
+      "D": 0,
+      "H": 15,
+      "episode_per_jam_normal": 0.35256410256410253,
+      "menit_episode_normal": 0.2235958485958486,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 0,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 42.5
+    },
+    {
+      "D": 3,
+      "H": 0,
+      "episode_per_jam_normal": 0.3983516483516483,
+      "menit_episode_normal": 0.16697191697191696,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 1,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 35.5
+    },
+    {
+      "D": 3,
+      "H": 5,
+      "episode_per_jam_normal": 0.38003663003663,
+      "menit_episode_normal": 0.1807081807081807,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 1,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 37.5
+    },
+    {
+      "D": 3,
+      "H": 10,
+      "episode_per_jam_normal": 0.35714285714285715,
+      "menit_episode_normal": 0.19688644688644688,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 1,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 37.5
+    },
+    {
+      "D": 3,
+      "H": 15,
+      "episode_per_jam_normal": 0.33882783882783885,
+      "menit_episode_normal": 0.21275946275946275,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 1,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 39.0
+    },
+    {
+      "D": 5,
+      "H": 0,
+      "episode_per_jam_normal": 0.3708791208791209,
+      "menit_episode_normal": 0.15926434676434675,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 2,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 33.5
+    },
+    {
+      "D": 5,
+      "H": 5,
+      "episode_per_jam_normal": 0.35714285714285715,
+      "menit_episode_normal": 0.1723901098901099,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 2,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 33.5
+    },
+    {
+      "D": 5,
+      "H": 10,
+      "episode_per_jam_normal": 0.3342490842490842,
+      "menit_episode_normal": 0.18757631257631258,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 2,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 33.5
+    },
+    {
+      "D": 5,
+      "H": 15,
+      "episode_per_jam_normal": 0.3205128205128205,
+      "menit_episode_normal": 0.20276251526251526,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 2,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 35.5
+    },
+    {
+      "D": 10,
+      "H": 0,
+      "episode_per_jam_normal": 0.2793040293040293,
+      "menit_episode_normal": 0.14674908424908426,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 2,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 29.5
+    },
+    {
+      "D": 10,
+      "H": 5,
+      "episode_per_jam_normal": 0.26556776556776557,
+      "menit_episode_normal": 0.15728021978021978,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 2,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 29.5
+    },
+    {
+      "D": 10,
+      "H": 10,
+      "episode_per_jam_normal": 0.2518315018315018,
+      "menit_episode_normal": 0.16842185592185593,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 2,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 29.5
+    },
+    {
+      "D": 10,
+      "H": 15,
+      "episode_per_jam_normal": 0.24267399267399267,
+      "menit_episode_normal": 0.18124236874236874,
+      "n_trip_breach_dinilai": 20,
+      "breach_terlewat_lead_lt10": 2,
+      "breach_tanpa_peringatan": 0,
+      "lead_median_menit": 29.5
+    }
+  ],
+  "durasi_s": 0.9
+}
